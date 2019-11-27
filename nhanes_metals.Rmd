@@ -8,28 +8,69 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+# install necessary packages
+install.packages("tidyverse")
+install.packages("NHANES")
+install.packages("survey") # Documentation for this package is: https://cran.r-project.org/web/packages/survey/survey.pdf
+install.packages("Hmisc")
+install.packages("foreign")
+install.packages("labelled")
+
+# load libraries
 library(tidyverse)
-library(survey)
 library(NHANES)
+library(survey) # This package handles survey weights/designs easily
+library(Hmisc) # This is a package (H misc.) for basic desciptive functions.
+library(foreign) # This package allows us to open .XPT files
+library(labelled)
 
 ```
 
-## R Markdown
+# Background:  
+The National Health and Nutrition Examination Survey (NHANES) is a nationally-representative survey of the general, noninstutionalized US population conducted by the National Center for Health Statistics. NHANES is a multi-stage, nationally representative sample in two-year cycles; participants are chosen to represent the entire general US. Certain age groups and racial/ethnic groups are intentionally oversampled to ensure adequate power to analyze these populations.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Participants undergo thorough examination including demographic questionnaire, a 24-hr dietary recall, a clinical examination, and a laboratory examination. All NHANES protocols were approved by the National Center for Health Statistics institutional review board, and all participants gave written informed consent.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+For more information on NHANES, view the Centers for Disease Control and Prevention (CDC) website: https://www.cdc.gov/nchs/nhanes/index.htm
+
+### Note:
+NHANES does not measure every environmental chemical in every participant. For some environmental chemicals, these measurements are only done on a subset of participant samples and there are special sub-weights that need to be used for analyzing these chemicals. As a general rule, you should use the weight for the smallest of the sampling subset you are analyzing in NHANES. 
+
+Here, we will explore the levels of lead, cadmium, mercury, and manganese measured in blood of males versus females to examine if there is a sex difference in body burden of these chemicals. We will conduct this analysis in one two-year survey cycle (2015/2016).
+
+## Download NHANES Data and Clean
+
 
 ```{r cars}
+
 summary(cars)
+
+
 ```
 
-## Including Plots
+## Sample Weighting
 
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
+
+# Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
 plot(pressure)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Descriptive Statistics
+
+```{r}
+
+```
+
+## Data Visualization
+
+```{r}
+
+```
+
+
+
