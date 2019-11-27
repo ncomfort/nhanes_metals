@@ -229,16 +229,43 @@ Find the mean levels and SE of Pb, Cd, Hg (inorganic and organic), and Mn in the
 # useful survey functions: 
 
 ## svymean: Computes means and SEs for survey data
-svymean(~lbxbpb, # continuous variable
+svymean(~lbxbpb, # continuous variable(s)
         nhanes.svy) # the ”svydesign” object
 
-# Compute the means of multiple variables
-mean_metals <-
+# Example, we compute the means of multiple variables:
+svymean(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, 
+        nhanes.svy)
+
+# put results into a table
+mean_metals_table <-
   svymean(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, nhanes.svy) %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"),
                 full_width = F) 
 # note that lbxbpb is in the units ug/dL whereas the others are in ug/L
+
+##############################################################
+## By Sex
+
+## svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
+svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
+      by = ~sex, # groups
+      nhanes.svy, # the ”svydesign” object 
+      svymean)  # the function you want %>% 
+
+# put into a table
+sex_mean_metals_table <-
+  svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
+      by = ~sex, # groups
+      nhanes.svy, # the ”svydesign” object 
+      svymean) %>%  # the function you want %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
+
+##############################################################
+
+# Other useful functions: 
 
 ## svyhist: Survey-weighted histograms
 
@@ -250,28 +277,23 @@ svyquantile(~lbxbpb, # continuous variable
 
 ## svychisq: Contingency table and chi-squared tests for survey data; weighted cross tabulations
 
-## svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
-sex_mean_metals <-
-  svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
-      by = ~sex, # groups
-      nhanes.svy, # the ”svydesign” object 
-      svymean) %>%  # the function you want %>% 
-  kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"),
-                full_width = F) 
-
-## svyttest: t tests
-
-
 ```
+
 
 The following are the estimated means and SEs of blood levels of lead, cadmium, mercury (total, inorganic, and organic), and manganese in the US population: 
 
-`r (print(mean_metals))`
+`r (print(mean_metals_table))`
 
 Broken down by sex: 
 
-`r (print(sex_mean_metals))`
+`r (print(sex_mean_metals_table))`
+
+```{r t tests}
+
+## svyttest: t tests
+
+```
+
 
 ## Data Visualization
 
