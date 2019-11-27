@@ -36,17 +36,72 @@ For more information on NHANES, view the Centers for Disease Control and Prevent
 ### Note:
 NHANES does not measure every environmental chemical in every participant. For some environmental chemicals, these measurements are only done on a subset of participant samples and there are special sub-weights that need to be used for analyzing these chemicals. As a general rule, you should use the weight for the smallest of the sampling subset you are analyzing in NHANES. 
 
-Here, we will explore the levels of lead, cadmium, mercury, and manganese measured in blood of males versus females to examine if there is a sex difference in body burden of these chemicals. We will conduct this analysis in one two-year survey cycle (2015/2016).
+Here, we will explore the levels of lead, cadmium, mercury, and manganese measured in blood of males versus females to examine if there is a sex difference in body burden of these chemicals.
+
+We will conduct this analysis in one two-year survey cycle (2015/2016) to start.
 
 ## Download NHANES Data and Clean
 
+The data files must first be downloaded. They can be found and downloaded at the NHANES website: https://wwwn.cdc.gov/nchs/nhanes/continuousnhanes/default.aspx?BeginYear=2015 
 
-```{r cars}
+They must first be downloaded.
 
-summary(cars)
+```{r NHANES metal data}
+# Load data
 
+# Demographic files for 2015-2016
+demo1516 <- read.xport("DEMO_I.XPT")
+# Laboratory blood Pb, Cd, Hg, Mn files for 2015-2016
+cd1516 <- read.xport("PBCD_I.XPT")
+# Inorganic, Ethyl, Methyl Mercury for 2015-2016
+hg1516 <- read.xport("IHGEM_I.XPT")
+
+# Merge data to create one dataframe per year; then keep only the necessary variables:
+nh1516 <- merge(demo1516, cd1516, by = "SEQN", all = T)
+nh1516 <- merge(nh1516, hg1516, by = c("SEQN", "WTSH2YR"), all = T) # can I do the analysis without the WTSH2YR?? If not, I will have to exclude those who have this value as "NA"
+
+# double check that there aren't repeat columns renamed [col_name].x or [col_name].y
+
+
+# Here is a list of variables we will need for our analysis:
+# SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR
+# LBXBPB, LBXBCD, LBXTHG, LBXIHG, LBXBSE, LBXBMN
+
+## any more?  (11/26/19 7:17pm)
+
+# Retain only necessary variables:
+nh1516_sub <- nh1516 %>%
+  select(SEQN, SDDSRVYR, # unique identifier and ? 
+         RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
+         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR, # weighting info
+         LBXBPB, LBXBCD, LBXTHG, LBXIHG, LBXBSE, LBXBMN) # metals
+
+head(nh1516_sub)
 
 ```
+
+```{r}
+## NOTE: the correct weights to use for this analysis of urinary arsenic data are WTSA2YR
+
+nh1112_sub <- nh1112_sub%>%
+  rename(gender = RIAGENDR, age = RIDAGEYR, race=RIDRETH1, totalarsenic = URXUAS, sbp1 = BPXSY1, sbp2 = BPXSY2, sbp3 = BPXSY3)  
+
+glimpse(nh1112_sub)
+
+# Label variable values
+nh1112_sub <- nh1112_sub %>%
+  set_value_labels(
+    gender = c("Male" = 1, "Female" = 2), 
+    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5))
+
+glimpse(nh1112_sub)
+
+# Treat any labelled variables as factors
+nh1112_sub <- nh1112_sub %>%
+  mutate_if(is.labelled, to_factor)
+
+```
+
 
 ## Sample Weighting
 
