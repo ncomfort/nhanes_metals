@@ -288,9 +288,96 @@ Broken down by sex:
 
 `r (print(sex_mean_metals_table))`
 
+Note that, as expected, males have higher mean Pb levels. It also appears that females have higher Mn levels. Are these differences significant? Let's conduct t tests.
+
 ```{r t tests}
 
 ## svyttest: t tests
+
+# Lead (Pb)
+####################################
+
+# To determine if this difference is statistically significant, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_pb <-
+  svyttest(lbxbpb~sex,
+           nhanes.svy)
+
+tt_pb
+
+## What if I want a 90% CI instead of a 95% CI? 
+# confint(tt, level=0.8)
+
+# Manganese (Mn)
+####################################
+
+tt_mn <-
+  svyttest(lbxbmn~sex,
+           nhanes.svy)
+
+tt_mn
+
+```
+
+The design-based t-tests indicate that the difference in both lead and manganese levels across males and females is significant.
+
+## Differences across age groups
+
+The exposures and body burdens of these various metals often change over the life course, from childhood through elderly years. Do sex differences exist at certain windows across the life course that are otherwise masked when looking at mean metal levels averaged across all ages? 
+
+To explore this, we will create a new categorical variable, "life_stage," that indicates whether an individual is in his or her child, adolescent, adult, or senior years. 
+
+**Question:** Accounting for survey design, what are the mean blood metal levels of 2015/2016 US males and females across childhood, adolescence, adulthood, and senior years? 
+
+```{r differences across life stages}
+
+## create new life stage variable
+nh1516_sub <-
+  nh1516_sub %>% 
+  mutate(life_stage =
+           ifelse(age < 12, "Child",
+           ifelse(age %in% 12:21, "Adolescent",
+           ifelse(age %in% 22:65, "Adult",
+                  "Elderly")))) %>% 
+  mutate(life_stage = as.factor(life_stage))
+
+# relevel the factors to be in chronological order of life stages
+nh1516_sub$life_stage <- fct_relevel(nh1516_sub$life_stage, c("Child", "Adolescent", "Adult", "Elderly"))
+  
+# Re-set the survey design
+# NOTE: We always have to re-set the survey design after we create any new variable.
+nhanes.svy <- svydesign(ids = ~sdmvpsu,
+                        strata = ~sdmvstra,
+                        weights = ~wtsh2yr,
+                        nest = TRUE,
+                        data = nh1516_sub)
+
+## Calculate means across sex and life stages
+svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
+      by = ~sex+life_stage, # groups
+      nhanes.svy, # the ”svydesign” object 
+      svymean)  # the function you want %>% 
+
+life_means_table <- 
+  svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, 
+      by = ~sex+life_stage, 
+      nhanes.svy, 
+      svymean) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
+
+```
+
+```{r chi squared test}
+
+# is 
+
+#We are comparing a binary variable (hypertension status) across a categorical variable, so let's use a chi-squared test. We can get the raw numbers from a simple table.
+nhanes.svy <- svydesign(ids=~SDMVPSU,strata=~SDMVSTRA,weights=~WTSA2YR,nest=T,data=nh1112_sub) #Re-setting the svydesign!
+
+#Contingency table and chi-squared tests for survey data using svychisq
+table(nh1112_sub$htn, nh1112_sub$race)
+svychisq(~htn+race, nhanes.svy, statistic="adjWald")
 
 ```
 
@@ -298,6 +385,54 @@ Broken down by sex:
 ## Data Visualization
 
 ```{r}
+
+# Lead
+############################################
+
+# "svyhist" creates histograms accounting for survey weights
+svyhist(~lbxbpb,
+        nhanes.svy,
+        main="Survey weighted average blood Pb",col="blue")
+
+# log transformed
+svyhist(~log(lbxbpb),
+        nhanes.svy,
+        main="Survey weighted log(average blood Pb)",col="blue")
+
+# Cadmium
+############################################
+svyhist(~lbxbcd,
+        nhanes.svy,
+        main="Survey weighted average blood Pb",col="blue")
+
+# log transformed
+svyhist(~log(lbxbcd),
+        nhanes.svy,
+        main="Survey weighted log(average blood Pb)",col="blue")
+
+# Mercury
+############################################
+svyhist(~lbxthg,
+        nhanes.svy,
+        main="Survey weighted average blood Pb",col="blue")
+
+# log transformed
+svyhist(~log(lbxthg),
+        nhanes.svy,
+        main="Survey weighted log(average blood Pb)",col="blue")
+
+# Manganese
+############################################
+svyhist(~lbxbmn,
+        nhanes.svy,
+        main="Survey weighted average blood Pb",col="blue")
+
+# log transformed
+svyhist(~log(lbxbmn),
+        nhanes.svy,
+        main="Survey weighted log(average blood Pb)",col="blue")
+
+# log transformed distributions look more normal! 
 
 ```
 
