@@ -5,17 +5,23 @@ date: "11/26/2019"
 output: html_document
 ---
 
+First, check whether you have the necessary packages installed and if not, install them.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-# install necessary packages
-install.packages("tidyverse")
-install.packages("NHANES")
-install.packages("survey") # Used to take into account complex survey designs like NHANES
-# Documentation for this package is: https://cran.r-project.org/web/packages/survey/survey.pdf
-install.packages("Hmisc")
-install.packages("foreign")
-install.packages("labelled")
+##  install necessary packages
+
+#install.packages("tidyverse")
+#install.packages("NHANES")
+#install.packages("survey") # Used to take into account complex survey designs like NHANES
+## Documentation for this package is: https://cran.r-project.org/web/packages/survey/survey.pdf
+
+# install.packages("Hmisc")
+# install.packages("foreign")
+# install.packages("labelled")
+# install.packages("knitr")
+# install.packages("kableExtra")
 
 # load libraries
 library(tidyverse)
@@ -24,6 +30,8 @@ library(survey) # This package handles survey weights/designs easily
 library(Hmisc) # This is a package (H misc.) for basic desciptive functions.
 library(foreign) # This package allows us to open .XPT files
 library(labelled)
+library(knitr)
+library(kableExtra)
 
 ```
 
@@ -120,7 +128,7 @@ nh1516_sub <-
 
 ```
 
-**Let's evaluate the missing data. Blood metals are measured in all participants aged 1-11 years old, and additionally in only a one-half subsample of participants 12 years and older. Let's find how many people are missing our main variables of interest: blood lead, cadmium, total and inorganic mercury, and manganese**
+Let's evaluate the missing data. Blood metals are measured in all participants aged 1-11 years old, and additionally in only a one-half subsample of participants 12 years and older. Let's find how many people are missing our main variables of interest: blood lead, cadmium, total and inorganic mercury, and manganese.
 
 ```{r remove NAs}
 
@@ -225,8 +233,11 @@ svymean(~lbxbpb, # continuous variable
         nhanes.svy) # the ”svydesign” object
 
 # Compute the means of multiple variables
-mean_metals <- svymean(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn,
-        nhanes.svy)
+mean_metals <-
+  svymean(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, nhanes.svy) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
 # note that lbxbpb is in the units ug/dL whereas the others are in ug/L
 
 ## svyhist: Survey-weighted histograms
@@ -244,7 +255,10 @@ sex_mean_metals <-
   svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
       by = ~sex, # groups
       nhanes.svy, # the ”svydesign” object 
-      svymean) # the function you want
+      svymean) %>%  # the function you want %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
 
 ## svyttest: t tests
 
@@ -253,11 +267,11 @@ sex_mean_metals <-
 
 The following are the estimated means and SEs of blood levels of lead, cadmium, mercury (total, inorganic, and organic), and manganese in the US population: 
 
-`r (print(mean_metals))` 
+`r (print(mean_metals))`
 
 Broken down by sex: 
 
-`r (print(sex_mean_metals))` 
+`r (print(sex_mean_metals))`
 
 ## Data Visualization
 
