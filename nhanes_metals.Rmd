@@ -2,7 +2,7 @@
 title: "nhanes_metals"
 author: "Nicole Comfort"
 date: "11/26/2019"
-output: html_document
+output: pdf_document
 ---
 
 First, check whether you have the necessary packages installed and if not, install them.
@@ -372,7 +372,7 @@ Across sex and age groups:
 
 `r (print(life_means_table))`
 
-```{r graph these means for sex and age group, eval=FALSE}
+```{r graph these means for sex and age group, eval=TRUE}
 
 # first, create a new dataset from the life_means_table data
 # (did manually by copying and pasting the data into a csv)
@@ -393,9 +393,7 @@ life_means_data %>%
              fill = Sex)) +
   geom_col(position = "dodge") +
   geom_errorbar(aes(ymin = Pb - se.lbxbpb, # change for different metalas
-                    ymax = Pb + se.lbxbpb,
-                    width = .2
-                    position = position_dodge(.9))) +
+                    ymax = Pb + se.lbxbpb)) +
   labs(title="Levels of Blood Pb in Males vs Females Across Life Stages", # edit labels for diff graphs
        x = "Life Stage",
        y = "Average Blood Pb (ug/dL)",
