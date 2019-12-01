@@ -355,7 +355,7 @@ nhanes.svy <- svydesign(ids = ~sdmvpsu,
 svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
       by = ~sex+life_stage, # groups
       nhanes.svy, # the ”svydesign” object 
-      svymean)  # the function you want %>% 
+      svymean)  # the function you want 
 
 life_means_table <- 
   svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, 
@@ -368,16 +368,126 @@ life_means_table <-
 
 ```
 
-```{r chi squared test}
+Across sex and age groups: 
+
+`r (print(life_means_table))`
+
+```{r graph these means for sex and age group, eval=FALSE}
+
+# first, create a new dataset from the life_means_table data
+# (did manually by copying and pasting the data into a csv)
+# import data
+life_means_data <-
+  read_csv("life_means.csv") %>% 
+  mutate(life_stage = as.factor(life_stage))
+
+life_means_data$life_stage <-
+  factor(life_means_data$life_stage, levels = c("Child", "Adolescent", "Adult", "Elderly"))
+
+# Lead
+pb_plot <-
+life_means_data %>% 
+  na.omit() %>% 
+  ggplot(aes(x = life_stage, 
+             y = Pb,  # change for different metals
+             fill = Sex)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(aes(ymin = Pb - se.lbxbpb, # change for different metalas
+                    ymax = Pb + se.lbxbpb,
+                    width = .2
+                    position = position_dodge(.9))) +
+  labs(title="Levels of Blood Pb in Males vs Females Across Life Stages", # edit labels for diff graphs
+       x = "Life Stage",
+       y = "Average Blood Pb (ug/dL)",
+       caption = "NHANES 2015/2016 data") 
+### Need to figure out how to dodge the error bar 
+
+# Cadmium
+cd_plot <-
+life_means_data %>% 
+  na.omit() %>% 
+  ggplot(aes(x = life_stage, 
+             y = Cd,
+             fill = Sex)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(aes(ymin = Cd - se.lbxbcd,
+                    ymax = Cd + se.lbxbcd)) +
+  labs(title="Levels of Blood Cd in Males vs Females Across Life Stages",
+       x = "Life Stage",
+       y = "Average Blood Pb (ug/L)",
+       caption = "NHANES 2015/2016 data") 
+
+# Manganese
+mn_plot <-
+life_means_data %>% 
+  na.omit() %>% 
+  ggplot(aes(x = life_stage, 
+             y = Mn,  # change for different metals
+             fill = Sex)) +
+  geom_bar(stat = "identity",
+           position = position_dodge()) +
+  geom_errorbar(aes(ymin = Mn - se.lbxbmn, # change for different metalas
+                    ymax = Mn + se.lbxbmn)) +
+  labs(title="Levels of Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
+       x = "Life Stage",
+       y = "Average Blood Pb (ug/dL)",
+       caption = "NHANES 2015/2016 data") 
+  
+# Mercury
+# mercury data manipulation
+hg_data <- 
+  life_means_data %>% 
+  mutate("total" = `Total Hg`,
+         "inorganic" = `Inorganic Hg`,
+         "organic" = `Organic Hg`) %>% 
+  select(-Pb, -Cd, -Mn, -se.lbxbpb, -se.lbxbcd, -se.lbxbmn) %>% 
+  pivot_longer(total:organic,
+               names_to = "type",
+               values_to = "value")
+
+# plot
+hg_plot <-
+  hg_data %>% 
+  na.omit() %>% 
+  ggplot(aes(x = Sex,
+             y = value,
+             fill = type)) +
+  geom_col() +
+  facet_grid(. ~life_stage) +
+  labs(title="Levels of Blood Hg in Males vs Females Across Life Stages", # edit labels for diff graphs
+       y = "Average Blood Hg (ug/dL)",
+       caption = "NHANES 2015/2016 data") +
+  scale_fill_discrete(name="Mercury Type")
+
+```
+
+`r (print(pb_plot))`
+
+`r (print(cd_plot))`
+
+`r (print(mn_plot))`
+
+`r (print(hg_plot))`
+
+```{r chi squared test, eval=FALSE}
 
 # is 
 
-#We are comparing a binary variable (hypertension status) across a categorical variable, so let's use a chi-squared test. We can get the raw numbers from a simple table.
-nhanes.svy <- svydesign(ids=~SDMVPSU,strata=~SDMVSTRA,weights=~WTSA2YR,nest=T,data=nh1112_sub) #Re-setting the svydesign!
+# We are comparing a binary variable (hypertension status) across a categorical variable, so let's use a chi-squared test. We can get the raw numbers from a simple table.
+nhanes.svy <-
+  svydesign(ids = ~sdmvpsu, 
+            strata = ~sdmvstra,  
+            weights = ~wtsh2yr, 
+            nest = TRUE,
+            data = nh1516_sub) #Re-setting the svydesign!
 
-#Contingency table and chi-squared tests for survey data using svychisq
-table(nh1112_sub$htn, nh1112_sub$race)
-svychisq(~htn+race, nhanes.svy, statistic="adjWald")
+# Contingency table and chi-squared tests for survey data using svychisq
+table(nh1516_sub$htn,
+      nh1516_sub$race)
+
+svychisq(~htn+sex,
+         nhanes.svy,
+         statistic="adjWald")
 
 ```
 
