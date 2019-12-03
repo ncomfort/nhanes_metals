@@ -2,7 +2,7 @@
 title: "nhanes_metals"
 author: "Nicole Comfort"
 date: "11/26/2019"
-output: pdf_document
+output: html_document
 ---
 
 First, check whether you have the necessary packages installed and if not, install them.
@@ -65,7 +65,7 @@ demo1516 <- read.xport("DEMO_I.XPT")
 # Laboratory blood Pb, Cd, Hg, Mn files for 2015-2016
 cd1516 <- read.xport("PBCD_I.XPT")
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/PBCD_I.htm
-### Eligible Sample: All examined participants aged 1-11 years old, and a one-half sample from participants aged 12 years and older were eligible.
+### Eligible Sample: All examined participants aged 1-11 years old, and a one-half sample from participants aged 12 years and older were eligible. 
 
 # Inorganic, Ethyl, Methyl Mercury for 2015-2016
 hg1516 <- read.xport("IHGEM_I.XPT")
@@ -78,25 +78,24 @@ hg1516 <- read.xport("IHGEM_I.XPT")
 
 # Merge data to create one dataframe per year; then keep only the necessary variables:
 nh1516 <- merge(demo1516, cd1516, by = "SEQN", all = TRUE)
-nh1516 <- merge(nh1516, hg1516, by = c("SEQN", "WTSH2YR"), all = TRUE) # exclude those who have this value as "NA"
+nh1516 <- merge(nh1516, hg1516, by = c("SEQN", "WTSH2YR"), all = TRUE)
+# later, exclude those who have WTSH2YR as "NA"
 
 # double check that there aren't repeat columns renamed [col_name].x or [col_name].y
 
 ## Here is a list of variables we will need for our analysis:
 # SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR
 # LBXBPB (blood lead), LBXBCD (blood cadmium),
-# LBXTHG (blood total mercury), LBXIHG (blood inorganic mercury),
+# LBXTHG (blood total mercury), LBXIHG (blood inorganic mercury), LBXBGE (ethyl mercury), LBXBGM (methyl mercury)
 # LBXBSE (blood selenium), LBXBMN (blood manganese)
-
-## any more?  (11/26/19 7:17pm)
 
 # Retain only necessary variables:
 nh1516_sub <-
   nh1516 %>%
-  select(SEQN, SDDSRVYR, # unique identifier and ? 
+  select(SEQN, SDDSRVYR, # unique identifier and survey year 
          RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
          WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR, # weighting info
-         LBXBPB, LBXBCD, LBXTHG, LBXIHG, LBXBMN) # metals (exclude selenium for now)
+         LBXBPB, LBXBCD, LBXTHG, LBXIHG, LBXBGE, LBXBGM, LBXBMN) # metals (exclude selenium for now)
 
 head(nh1516_sub)
 
@@ -109,8 +108,12 @@ nh1516_sub <-
          race = ridreth1) %>% 
   mutate(lbxohg = lbxthg - lbxihg) # create new variable for organic mercury (total Hg - inorganic Hg)
 # why are some organic mercury values negative?? 
+# later, plot mercury broken down as organic and inorganic, but also try breaking down organic to ethyl and methyl
 
 glimpse(nh1516_sub)
+
+test <- nh1516_sub[!is.na(nh1516_sub$wtsh2yr), ]
+# this removes subjects missing the wtsh2yr variable, but some are still missing blood metal values
 
 # Label variable values
 nh1516_sub <-
@@ -144,6 +147,14 @@ nh1516_sub %>%
 # for total Hg 
 nh1516_sub %>%
   count(is.na(lbxthg))
+
+# for ethyl Hg
+nh1516_sub %>%
+  count(is.na(lbxbge))
+
+# for methyl Hg
+nh1516_sub %>%
+  count(is.na(lbxbgm))
 
 # for inorganic Hg
 nh1516_sub %>%
@@ -188,7 +199,7 @@ Continue data cleaning by applying appropriate sample weights:
 ########################################################################
   
 # you have to choose the survey weights that correspond to the smallest subsample that is relevant for each metal/survey year of interest
-# I think that these metals (Pb, Cd, Hg, Mn) were measured in everybody, check teh data documentation and double-check with Annie
+# I think that these metals (Pb, Cd, Hg, Mn) were measured in everybody, check the data documentation and double-check with Annie
 
 
 ```
@@ -207,7 +218,7 @@ nhanes.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
                         nest = TRUE,
                         data = nh1516_sub) # call the dataframe 
 
-summary(nhanes.svy)
+summary(nhanes.svy) 
 
 # account for non-response (since there are many sub-components of NHANES, incl. interview, labs, exposure data)
 # thus, sub-samples have different weights because not all participants are invited to participate in all sub-components
@@ -215,8 +226,6 @@ summary(nhanes.svy)
 
 ## If you want to combine weights across sub-samples within a survey cycle or across survey cycles, this is even more complex
 ## Advice: don’t do it unless you understand what you are doing.  
-
-
 
 ```
 
@@ -268,19 +277,19 @@ sex_mean_metals_table <-
 # Other useful functions: 
 
 ## svyhist: Survey-weighted histograms
-
+ 
 ## svyquantile: Computes quantiles for survey data (you can choose the quantile values)
-svyquantile(~lbxbpb, # continuous variable 
-            nhanes.svy, # the ”svydesign” object 
-            c(0.10, 0.90), # list of percentiles
+svyquantile(~lbxbpb, # continuous variable  
+            nhanes.svy, # the ”svydesign” object  
+            c(0.10, 0.90), # list of percentiles 
             ci = F)
 
 ## svychisq: Contingency table and chi-squared tests for survey data; weighted cross tabulations
-
+ 
 ```
 
 
-The following are the estimated means and SEs of blood levels of lead, cadmium, mercury (total, inorganic, and organic), and manganese in the US population: 
+The following are the estimated means and SEs of blood levels of lead, cadmium, mercury (total, inorganic, and organic), and manganese in the 2015/2016 US population: 
 
 `r (print(mean_metals_table))`
 
@@ -316,9 +325,17 @@ tt_mn <-
 
 tt_mn
 
+# Cadmium (Cd)
+####################################
+tt_cd <-
+  svyttest(lbxbcd~sex,
+           nhanes.svy)
+
+tt_cd
+
 ```
 
-The design-based t-tests indicate that the difference in both lead and manganese levels across males and females is significant.
+The design-based t-tests indicate that the difference in lead, manganese, and cadmium levels across males and females is significant. 
 
 ## Differences across age groups
 
@@ -327,6 +344,11 @@ The exposures and body burdens of these various metals often change over the lif
 To explore this, we will create a new categorical variable, "life_stage," that indicates whether an individual is in his or her child, adolescent, adult, or senior years. 
 
 **Question:** Accounting for survey design, what are the mean blood metal levels of 2015/2016 US males and females across childhood, adolescence, adulthood, and senior years? 
+
+We define "child" as age < 12 years,
+"adolescent" as age 12-21 years,
+"adult" as age 22-65 years, 
+and "elderly" as age > 65 years.
 
 ```{r differences across life stages}
 
@@ -372,10 +394,32 @@ Across sex and age groups:
 
 `r (print(life_means_table))`
 
-```{r graph these means for sex and age group, eval=TRUE}
+Are these differences seen across sex and age group significant? 
+
+```{r}
+# use ANOVA because I am comparing the mean of a continuous variable across two categorical variables (sex and age group)
+## or, why categorize it, but first see if it is significant by sex and age, then categorize age to make graphing easier
+
+```
+
+```{r boxplots from original data}
+
+# for Pb
+nh1516_sub %>% 
+  ggplot(aes(x = sex,
+             y = lbxbpb)) +
+  geom_boxplot()
+
+## boxplot doesn't look good because there are too many outliers,
+## probably because NHANES oversamples specific populations, so the original data are going to be non-representative/biased. go with the survey weighted means
+
+```
+
+
+```{r graph these means for sex and age group, Pb}
 
 # first, create a new dataset from the life_means_table data
-# (did manually by copying and pasting the data into a csv)
+# (did manually by copying and pasting the data into a csv) - can I do this from the original data?? 
 # import data
 life_means_data <-
   read_csv("life_means.csv") %>% 
@@ -393,12 +437,49 @@ life_means_data %>%
              fill = Sex)) +
   geom_col(position = "dodge") +
   geom_errorbar(aes(ymin = Pb - se.lbxbpb, # change for different metalas
-                    ymax = Pb + se.lbxbpb)) +
+                    ymax = Pb + se.lbxbpb),
+                    position = position_dodge(0.9)) +
   labs(title="Levels of Blood Pb in Males vs Females Across Life Stages", # edit labels for diff graphs
        x = "Life Stage",
        y = "Average Blood Pb (ug/dL)",
        caption = "NHANES 2015/2016 data") 
-### Need to figure out how to dodge the error bar 
+
+# Lead, Ages 1-2
+################################################################
+
+## How can I calculate and graph the mean if the stratum has only one PSU at stage 1??
+## lead in ages 1-2
+nh1516_young <-
+  nh1516_sub %>% 
+  filter(age == 1 | age == 2)
+
+nhanes.svy.young <- svydesign(ids = ~sdmvpsu, # cluster IDs
+                        strata = ~sdmvstra, # strata IDs
+                        weights = ~wtsh2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
+                        nest = TRUE,
+                        data = nh1516_young) # call the dataframe 
+
+svyby(~lbxbpb, # continuous variable
+      by = ~sex, # groups
+      nhanes.svy.young, # the ”svydesign” object 
+      svymean)  # the function you want %>% 
+
+tt_pb_young <-
+  svyttest(lbxbpb~sex,
+           nhanes.svy.young)
+
+tt_pb_young
+
+nh1516_young %>% 
+  na.omit() %>% 
+  ggplot(aes(x = age, 
+             y = lbxbpb,  # change for different metals
+             fill = sex))
+## get this to work 
+
+```
+
+```{r graphs for other metals}
 
 # Cadmium
 cd_plot <-
@@ -409,10 +490,11 @@ life_means_data %>%
              fill = Sex)) +
   geom_col(position = "dodge") +
   geom_errorbar(aes(ymin = Cd - se.lbxbcd,
-                    ymax = Cd + se.lbxbcd)) +
+                    ymax = Cd + se.lbxbcd),
+                position = position_dodge(0.9)) +
   labs(title="Levels of Blood Cd in Males vs Females Across Life Stages",
        x = "Life Stage",
-       y = "Average Blood Pb (ug/L)",
+       y = "Average Blood Cd (ug/L)",
        caption = "NHANES 2015/2016 data") 
 
 # Manganese
@@ -422,13 +504,13 @@ life_means_data %>%
   ggplot(aes(x = life_stage, 
              y = Mn,  # change for different metals
              fill = Sex)) +
-  geom_bar(stat = "identity",
-           position = position_dodge()) +
+  geom_col(position = "dodge") +
   geom_errorbar(aes(ymin = Mn - se.lbxbmn, # change for different metalas
-                    ymax = Mn + se.lbxbmn)) +
+                    ymax = Mn + se.lbxbmn),
+                position = position_dodge(0.9)) +
   labs(title="Levels of Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Average Blood Pb (ug/dL)",
+       y = "Average Blood Mn (ug/L)",
        caption = "NHANES 2015/2016 data") 
   
 # Mercury
@@ -439,9 +521,12 @@ hg_data <-
          "inorganic" = `Inorganic Hg`,
          "organic" = `Organic Hg`) %>% 
   select(-Pb, -Cd, -Mn, -se.lbxbpb, -se.lbxbcd, -se.lbxbmn) %>% 
-  pivot_longer(total:organic,
+  pivot_longer(inorganic:organic,
                names_to = "type",
                values_to = "value")
+
+#m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
+#m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
 
 # plot
 hg_plot <-
@@ -453,11 +538,14 @@ hg_plot <-
   geom_col() +
   facet_grid(. ~life_stage) +
   labs(title="Levels of Blood Hg in Males vs Females Across Life Stages", # edit labels for diff graphs
-       y = "Average Blood Hg (ug/dL)",
+       y = "Average Blood Hg (ug/L)",
        caption = "NHANES 2015/2016 data") +
-  scale_fill_discrete(name="Mercury Type")
+  scale_fill_discrete(name = "Mercury Type")
+
+## how to add error bars here?????
 
 ```
+
 
 `r (print(pb_plot))`
 
@@ -469,7 +557,8 @@ hg_plot <-
 
 ```{r chi squared test, eval=FALSE}
 
-# is 
+# EXAMPLE CODE for chi-squared test
+# Hypertension variable does not exist in our nh1516_sub dataframe
 
 # We are comparing a binary variable (hypertension status) across a categorical variable, so let's use a chi-squared test. We can get the raw numbers from a simple table.
 nhanes.svy <-
