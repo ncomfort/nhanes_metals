@@ -72,6 +72,12 @@ hg1516 <- read.xport("IHGEM_I.XPT")
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/IHGEM_I.htm
 ### Eligible Sample: All examined participants aged 1-11 years old, and a one-half sample from participants aged 12 years and older were eligible.
 
+# Total Mercury in Urine for 2015-2016
+uhg1516 <- read.xport("UHG_I.XPT")
+## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UHG_I.htm
+### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
+#### Note that this is different weighting scheme than for blood metals
+
 ```
 
 ```{r create dataframe}
@@ -173,6 +179,11 @@ nh1516_sub %>%
 nh1516_sub <-
   nh1516_sub %>% 
   drop_na()
+
+# to drop rows missing only the weight variable
+nh1516_sub <-
+  nh1516_sub %>% 
+  drop_na(wtsh2yr)
 
 ```
 
@@ -555,6 +566,136 @@ hg_plot <-
 
 `r (print(hg_plot))`
 
+As we can see, there was much higher concentrations of organic Hg than inorganic Hg for Hg measured in blood.
+
+The concentration of total Hg in urine is a biomarker of exposure primarily to elemental and inorganic Hg, although some Hg in urine comes from de-methylation of methyl Hg in blood (Abe et al., 1995). Thus, examining total Hg in urine better reflects exposure to inorganic Hg.
+
+NHANES 2015/2016 collected information on Hg in urine. We will analyze this data from NHANES 2015/2016 as well.
+
+```{r urine mercury data cleaning}
+
+# Merge data to create one dataframe per year/NHANES cycle
+uhg_1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)
+
+# Retain only necessary variables:
+uhg_1516 <-
+  uhg_1516 %>%
+  select(SEQN, SDDSRVYR, # unique identifier and survey year 
+         RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
+         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info, NOTICE IT'S DIFFERENT NOW 
+         URXUHG) # urine mercury
+ 
+head(uhg_1516)
+
+# clean / rename variable names
+uhg_1516 <-
+  uhg_1516 %>%
+  janitor::clean_names() %>% 
+  rename(sex = riagendr,
+         age = ridageyr,
+         race = ridreth1)
+
+glimpse(uhg_1516)
+
+# Label variable values
+uhg_1516 <-
+  uhg_1516 %>%
+  set_value_labels(
+    sex = c("Male" = 1, "Female" = 2), 
+    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5))
+
+glimpse(uhg_1516)
+
+# Treat any labelled variables (e.g. sex) as factors
+uhg_1516 <-
+  uhg_1516 %>%
+  mutate_if(is.labelled, to_factor)
+
+# Exclude those who have WTSA2YR as "NA"
+uhg_1516 <-
+  uhg_1516 %>% 
+  drop_na(wtsa2yr, urxuhg)
+
+```
+
+Next, we set the survey design again to look at the mean urinary mercury across males and females.
+
+```{r urine mercury survey weighting}
+
+uhg.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
+                        strata = ~sdmvstra, # strata IDs
+                        weights = ~wtsa2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
+                        nest = TRUE,
+                        data = uhg_1516) # call the dataframe 
+
+summary(uhg.svy) 
+
+```
+
+```{r urine mercury statistics and graphing}
+
+## svymean: Computes means and SEs for survey data
+svymean(~urxuhg, # continuous variable(s)
+        uhg.svy) # the ”svydesign” object
+
+# put results into a table
+urinary_hg_table <-
+  svymean(~urxuhg, nhanes.svy) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
+
+##############################################################
+## By Sex
+
+## svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
+svyby(~urxuhg, # continuous variable
+      by = ~sex, # groups
+      uhg.svy, # the ”svydesign” object 
+      svymean)  # the function you want %>% 
+
+# put into a table
+sex_urxhg_table <-
+  svyby(~urxuhg, # continuous variable
+      by = ~sex, # groups
+      uhg.svy, # the ”svydesign” object 
+      svymean) %>%  # the function you want %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
+
+##############################################################
+# T Test
+
+## Is the difference across males and females significant?? 
+### Should I be doing t tests on log-transformed data if that is more normal? 
+svyhist(~urxuhg,
+        uhg.svy,
+        main = "Survey weighted average urine Hg", col = "blue")
+
+# log transformed
+svyhist(~log(urxuhg),
+        uhg.svy,
+        main = "Survey weighted log(average urine Hg)", col = "blue")
+## Still not very normal... 
+
+tt_uhg <-
+  svyttest(urxuhg~sex,
+           uhg.svy)
+
+tt_uhg
+
+# the difference here is significant but it was done on a non-normal distribution 
+
+```
+
+Mean and Standard Deviation of Urinary (Elemental/Inorganic) Hg: 
+`r (print(urinary_hg_table))`
+
+Broken down by sex: 
+`r (print(sex_urxhg_table))`
+
+
 ```{r chi squared test, eval=FALSE}
 
 # EXAMPLE CODE for chi-squared test
@@ -585,7 +726,7 @@ svychisq(~htn+sex,
 
 # Lead
 ############################################
-
+ 
 # "svyhist" creates histograms accounting for survey weights
 svyhist(~lbxbpb,
         nhanes.svy,
@@ -632,6 +773,5 @@ svyhist(~log(lbxbmn),
 # log transformed distributions look more normal! 
 
 ```
-
 
 
