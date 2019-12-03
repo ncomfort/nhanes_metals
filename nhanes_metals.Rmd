@@ -78,6 +78,22 @@ uhg1516 <- read.xport("UHG_I.XPT")
 ### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
 #### Note that this is different weighting scheme than for blood metals
 
+## Arsenic
+# Speciated urinary arsenics for 2015-2016
+uas_sp <- read.xport("UAS_I.XPT")
+## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UAS_I.htm
+### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
+
+# Total urinary arsenic for 2015-2016
+uas_t <- read.xport("UTAS_I.XPT")
+## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UTAS_I.htm
+### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
+
+# creatinine for 2015-2016 (for adjustment of urinary arsenic)
+creatinine <- read.xport("ALB_CR_I.XPT")
+## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/ALB_CR_I.htm
+### Eligible Sample: Examined participants aged 3 years and older were eligible.
+
 ```
 
 ```{r create dataframe}
@@ -695,6 +711,55 @@ Mean and Standard Deviation of Urinary (Elemental/Inorganic) Hg:
 Broken down by sex: 
 `r (print(sex_urxhg_table))`
 
+Lastly, we will examine urinary arsenic (combining species into organic and inorganic): 
+
+```{r download arsenic data and clean}
+
+# Merge data to create one dataframe per year/NHANES cycle
+uhg_1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)
+
+# Retain only necessary variables:
+uhg_1516 <-
+  uhg_1516 %>%
+  select(SEQN, SDDSRVYR, # unique identifier and survey year 
+         RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
+         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info, NOTICE IT'S DIFFERENT NOW 
+         URXUHG) # urine mercury
+ 
+head(uhg_1516)
+
+# clean / rename variable names
+uhg_1516 <-
+  uhg_1516 %>%
+  janitor::clean_names() %>% 
+  rename(sex = riagendr,
+         age = ridageyr,
+         race = ridreth1)
+
+glimpse(uhg_1516)
+
+# Label variable values
+uhg_1516 <-
+  uhg_1516 %>%
+  set_value_labels(
+    sex = c("Male" = 1, "Female" = 2), 
+    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5))
+
+glimpse(uhg_1516)
+
+# Treat any labelled variables (e.g. sex) as factors
+uhg_1516 <-
+  uhg_1516 %>%
+  mutate_if(is.labelled, to_factor)
+
+# Exclude those who have WTSA2YR as "NA"
+uhg_1516 <-
+  uhg_1516 %>% 
+  drop_na(wtsa2yr, urxuhg)
+
+```
+
+
 
 ```{r chi squared test, eval=FALSE}
 
@@ -720,7 +785,7 @@ svychisq(~htn+sex,
 ```
 
 
-## Data Visualization
+## Data Distributions
 
 ```{r}
 
@@ -730,34 +795,34 @@ svychisq(~htn+sex,
 # "svyhist" creates histograms accounting for survey weights
 svyhist(~lbxbpb,
         nhanes.svy,
-        main="Survey weighted average blood Pb",col="blue")
+        main = "Survey weighted average blood Pb", col = "blue")
 
 # log transformed
 svyhist(~log(lbxbpb),
         nhanes.svy,
-        main="Survey weighted log(average blood Pb)",col="blue")
+        main=  "Survey weighted log(average blood Pb)", col = "blue")
 
 # Cadmium
 ############################################
 svyhist(~lbxbcd,
         nhanes.svy,
-        main="Survey weighted average blood Pb",col="blue")
+        main= "Survey weighted average blood Pb", col = "blue")
 
 # log transformed
 svyhist(~log(lbxbcd),
         nhanes.svy,
-        main="Survey weighted log(average blood Pb)",col="blue")
+        main = "Survey weighted log(average blood Pb)", col = "blue")
 
 # Mercury
 ############################################
 svyhist(~lbxthg,
         nhanes.svy,
-        main="Survey weighted average blood Pb",col="blue")
+        main = "Survey weighted average blood Pb", col = "blue")
 
 # log transformed
 svyhist(~log(lbxthg),
         nhanes.svy,
-        main="Survey weighted log(average blood Pb)",col="blue")
+        main = "Survey weighted log(average blood Pb)", col = "blue")
 
 # Manganese
 ############################################
@@ -771,6 +836,7 @@ svyhist(~log(lbxbmn),
         main="Survey weighted log(average blood Pb)",col="blue")
 
 # log transformed distributions look more normal! 
+# so should conduct t tests on the log transformed data
 
 ```
 
