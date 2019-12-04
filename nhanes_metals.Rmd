@@ -716,49 +716,56 @@ Lastly, we will examine urinary arsenic (combining species into organic and inor
 ```{r download arsenic data and clean}
 
 # Merge data to create one dataframe per year/NHANES cycle
-uhg_1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)
+arsenic_1516 <- merge(uas_sp, uas_t, by = c("SEQN", "WTSA2YR"), all = TRUE)
+arsenic_1516 <- merge(arsenic_1516, demo1516, by = "SEQN", all = TRUE)
 
 # Retain only necessary variables:
-uhg_1516 <-
-  uhg_1516 %>%
-  select(SEQN, SDDSRVYR, # unique identifier and survey year 
-         RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
-         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info, NOTICE IT'S DIFFERENT NOW 
-         URXUHG) # urine mercury
+# uhg_1516 <-
+#   uhg_1516 %>%
+#   select(SEQN, SDDSRVYR, # unique identifier and survey year 
+#          RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
+#          WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info, NOTICE IT'S DIFFERENT NOW 
+#          URXUHG) # urine mercury
  
-head(uhg_1516)
+head(arsenic_1516)
 
 # clean / rename variable names
-uhg_1516 <-
-  uhg_1516 %>%
+arsenic_1516 <-
+  arsenic_1516 %>%
   janitor::clean_names() %>% 
   rename(sex = riagendr,
          age = ridageyr,
-         race = ridreth1)
-
-glimpse(uhg_1516)
-
-# Label variable values
-uhg_1516 <-
-  uhg_1516 %>%
+         race = ridreth1) %>% 
   set_value_labels(
     sex = c("Male" = 1, "Female" = 2), 
-    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5))
+    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5)) %>% 
+  mutate_if(is.labelled, to_factor) %>% 
+  drop_na(wtsa2yr, urxuas)
 
-glimpse(uhg_1516)
-
-# Treat any labelled variables (e.g. sex) as factors
-uhg_1516 <-
-  uhg_1516 %>%
-  mutate_if(is.labelled, to_factor)
-
-# Exclude those who have WTSA2YR as "NA"
-uhg_1516 <-
-  uhg_1516 %>% 
-  drop_na(wtsa2yr, urxuhg)
+glimpse(arsenic_1516)
 
 ```
 
+```{r survey weighting}
+
+arsenic.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
+                        strata = ~sdmvstra, # strata IDs
+                        weights = ~wtsa2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
+                        nest = TRUE,
+                        data = arsenic_1516) # call the dataframe 
+
+summary(arsenic.svy) 
+```
+
+```{r arsenic descriptive stats}
+
+## svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
+svyby(~urxuas, # continuous variable
+      by = ~sex, # groups
+      arsenic.svy, # the ”svydesign” object 
+      svymean)  # the function you want %>% 
+
+```
 
 
 ```{r chi squared test, eval=FALSE}
@@ -823,20 +830,32 @@ svyhist(~lbxthg,
 svyhist(~log(lbxthg),
         nhanes.svy,
         main = "Survey weighted log(average blood Pb)", col = "blue")
-
-# Manganese
+ 
+# Manganese 
 ############################################
 svyhist(~lbxbmn,
-        nhanes.svy,
-        main="Survey weighted average blood Pb",col="blue")
+        nhanes.svy, 
+        main = "Survey weighted average blood Pb", col = "blue")
 
-# log transformed
+# log transformed 
 svyhist(~log(lbxbmn),
         nhanes.svy,
-        main="Survey weighted log(average blood Pb)",col="blue")
+        main = "Survey weighted log(average blood Pb)", col = "blue")
 
 # log transformed distributions look more normal! 
 # so should conduct t tests on the log transformed data
+
+# Arsenic
+############################################
+svyhist(~urxuas,
+        arsenic.svy,
+        main = "Survey weighted average urinary As", col = "blue")
+
+# log transformed
+svyhist(~log(urxuas),
+        arsenic.svy,
+        main = "Survey weighted log(average urinary As)", col = "blue")
+## looks much more normal 
 
 ```
 
