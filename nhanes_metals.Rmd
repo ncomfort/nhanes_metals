@@ -1,7 +1,7 @@
 ---
 title: "nhanes_metals"
 author: "Nicole Comfort"
-date: "11/26/2019"
+date: "12/6/2019"
 output: html_document
 ---
 
@@ -36,26 +36,25 @@ library(kableExtra)
 ```
 
 # Background:  
-The National Health and Nutrition Examination Survey (NHANES) is a nationally-representative survey of the general, noninstutionalized US civilian population conducted by the National Center for Health Statistics. NHANES is a multi-stage, nationally representative sample in two-year cycles; participants are chosen to represent the entire general US. Certain age groups and racial/ethnic groups are intentionally oversampled to ensure adequate power to analyze these populations.
+The National Health and Nutrition Examination Survey (NHANES) is a nationally-representative survey of the general, noninstutionalized US civilian population conducted by the National Center for Health Statistics. NHANES is a multi-stage sample completed in two-year cycles. Participants are chosen to represent the entire general U.S., but certain age groups and racial/ethnic groups are intentionally oversampled to ensure adequate power to analyze these populations.
 
 Participants undergo thorough examination including demographic questionnaire, a 24-hr dietary recall, a clinical examination, and a laboratory examination. All NHANES protocols were approved by the National Center for Health Statistics institutional review board, and all participants gave written informed consent.
 
 For more information on NHANES, view the Centers for Disease Control and Prevention (CDC) website: https://www.cdc.gov/nchs/nhanes/index.htm
 
 ### Note:
-NHANES does not measure every environmental chemical in every participant. For some environmental chemicals, these measurements are only done on a subset of participant samples and there are special sub-weights that need to be used for analyzing these chemicals. As a general rule, you should use the weight for the smallest of the sampling subset you are analyzing in NHANES.
+NHANES does not measure every environmental chemical in every participant. For some environmental chemicals, these measurements are only done on a subset of participant samples and there are special sub-weights that need to be used for analyzing these chemicals. 
 
-Here, we will explore the levels of lead, cadmium, mercury, and manganese measured in blood of males versus females to examine if there is a sex difference in body burden of these chemicals.
+Here, we will explore the *unadjusted* levels of lead, cadmium, mercury, and manganese measured in blood of males versus females to examine if there is a sex difference in body burden of these chemicals.
 
-We will conduct this analysis in one two-year survey cycle (2015/2016) to start, *since combining weights across survey cycles is very complex.* See http://www.cdc.gov/nchs/tutorials/NHANES/SurveyDesign/Weighting/intro.htm for more information. 
+We will conduct this analysis in one two-year survey cycle (2015/2016), *since combining weights across survey cycles is very complex.* See http://www.cdc.gov/nchs/tutorials/NHANES/SurveyDesign/Weighting/intro.htm for more information. 
 
-## Download NHANES Data and Clean
+# Download NHANES Data and Clean
 
 The data files must first be downloaded. They can be found and downloaded at the NHANES website: https://wwwn.cdc.gov/nchs/nhanes/continuousnhanes/default.aspx?BeginYear=2015 
 
-They must first be downloaded.
-
 ```{r NHANES metal data}
+
 # Load data
 
 # Demographic files for 2015-2016
@@ -89,14 +88,18 @@ uas_t <- read.xport("UTAS_I.XPT")
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UTAS_I.htm
 ### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
 
-# creatinine for 2015-2016 (for adjustment of urinary arsenic)
+# creatinine for 2015-2016 (for adjustment of urinary arsenic and urinary mercury)
 creatinine <- read.xport("ALB_CR_I.XPT")
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/ALB_CR_I.htm
 ### Eligible Sample: Examined participants aged 3 years and older were eligible.
 
 ```
 
-```{r create dataframe}
+## Blood Metals
+
+```{r create blood metal dataframe}
+
+# Blood metal dataframe 
 
 # Merge data to create one dataframe per year; then keep only the necessary variables:
 nh1516 <- merge(demo1516, cd1516, by = "SEQN", all = TRUE)
@@ -108,8 +111,9 @@ nh1516 <- merge(nh1516, hg1516, by = c("SEQN", "WTSH2YR"), all = TRUE)
 ## Here is a list of variables we will need for our analysis:
 # SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR
 # LBXBPB (blood lead), LBXBCD (blood cadmium),
-# LBXTHG (blood total mercury), LBXIHG (blood inorganic mercury), LBXBGE (ethyl mercury), LBXBGM (methyl mercury)
 # LBXBSE (blood selenium), LBXBMN (blood manganese)
+# LBXTHG (blood total mercury), LBXIHG (blood inorganic mercury),
+# LBXBGE (ethyl mercury), LBXBGM (methyl mercury)
 
 # Retain only necessary variables:
 nh1516_sub <-
@@ -117,93 +121,201 @@ nh1516_sub <-
   select(SEQN, SDDSRVYR, # unique identifier and survey year 
          RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
          WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR, # weighting info
-         LBXBPB, LBXBCD, LBXTHG, LBXIHG, LBXBGE, LBXBGM, LBXBMN) # metals (exclude selenium for now)
-
-head(nh1516_sub)
-
-# clean / rename variable names
-nh1516_sub <-
-  nh1516_sub %>%
+         LBXBPB, LBXBCD, LBXBMN, LBXTHG, LBXIHG, LBXBGE, LBXBGM) %>% # metals (exclude selenium for now)
   janitor::clean_names() %>% 
+  mutate(lbxohg = lbxthg - lbxihg) %>% # create new variable for organic mercury (total Hg - inorganic Hg)
   rename(sex = riagendr,
          age = ridageyr,
          race = ridreth1) %>% 
-  mutate(lbxohg = lbxthg - lbxihg) # create new variable for organic mercury (total Hg - inorganic Hg)
-# why are some organic mercury values negative?? 
-# later, plot mercury broken down as organic and inorganic, but also try breaking down organic to ethyl and methyl
-
-glimpse(nh1516_sub)
-
-test <- nh1516_sub[!is.na(nh1516_sub$wtsh2yr), ]
-# this removes subjects missing the wtsh2yr variable, but some are still missing blood metal values
-
-# Label variable values
-nh1516_sub <-
-  nh1516_sub %>%
-  set_value_labels(
+  set_value_labels(                     # Label variable values
     sex = c("Male" = 1, "Female" = 2), 
-    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5))
+    race = c("Mexican American" = 1,
+             "Other Hispanic" = 2,
+             "NH White" = 3,
+             "NH Black" = 4,
+             "Other including multi" = 5)) %>% 
+  mutate_if(is.labelled, to_factor)  # Treat any labelled variables (e.g. sex) as factors
 
-glimpse(nh1516_sub)
 
-# Treat any labelled variables (e.g. sex) as factors
-nh1516_sub <-
-  nh1516_sub %>%
-  mutate_if(is.labelled, to_factor)
-
+# Note to self: why are some organic mercury values (the variable I created) negative?? 
+# later, plot mercury broken down as organic and inorganic, but also try breaking down organic to ethyl and methyl
+# or Annie's recommendation was just to plot total and methyl? 
 ```
 
-Let's evaluate the missing data. Blood metals are measured in all participants aged 1-11 years old, and additionally in only a one-half subsample of participants 12 years and older. Let's find how many people are missing our main variables of interest: blood lead, cadmium, total and inorganic mercury, and manganese.
+Blood metals are measured in all participants aged 1-11 years old, and additionally in only a one-half subsample of participants 12 years and older.
 
-```{r remove NAs}
+Let's find how many people are missing the weight value, indicating that they did not have their blood metals measured: 
 
-# assess missingness
+```{r remove NAs and 0 weights}
+
+# assess missingness of weights variable to see how many were eligible
+# those that were eligible, i.e. all participants 1-11 and half of participants aged 12 and older will have a wtsh2yr value that is not equal to 0 
+nh1516_sub %>% 
+  count(is.na(wtsh2yr))
+
+# drop rows missing the weight variable to arrive at the eligible subset
+nh1516_sub <-
+  nh1516_sub %>% 
+  drop_na(wtsh2yr) %>%  
+  filter(wtsh2yr != 0) 
+ 
+```
+
+Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(nh1516_sub))` were eligible to have blood metals measured.
+
+Let's further evaluate missing data. Of those eligible, how many did not have blood metals measured? 
+
+```{r evaluate missing metal data}
+
+# of those eligible, how many are missing values of our metals of interest (Pb, Cd, Hg, Mn)? 
+
 # for Pb
 nh1516_sub %>%
   count(is.na(lbxbpb))
+# 10.88% still missing data.... seems extremely high 
 
 # for Cd
 nh1516_sub %>%
   count(is.na(lbxbcd))
+# 10.88% missing data
  
 # for total Hg 
 nh1516_sub %>%
   count(is.na(lbxthg))
-
-# for ethyl Hg
-nh1516_sub %>%
-  count(is.na(lbxbge))
-
-# for methyl Hg
-nh1516_sub %>%
-  count(is.na(lbxbgm))
-
-# for inorganic Hg
-nh1516_sub %>%
-  count(is.na(lbxihg))
+# 10.88% missing data 
 
 # for Mn
 nh1516_sub %>%
   count(is.na(lbxbmn))
-
-# remove those with NAs
-
-## should I create a separate dataset for each?? or only retain those that are COMPLETE CASES?? (Ask Annie)
-# for now (11/27/19 10:30am), I will retain only complete cases
+# 10.89% missing data 
 
 # drop rows with missing values
-nh1516_sub <-
+nh1516_sub <- 
   nh1516_sub %>% 
-  drop_na()
-
-# to drop rows missing only the weight variable
-nh1516_sub <-
-  nh1516_sub %>% 
-  drop_na(wtsh2yr)
+  drop_na(lbxbpb, lbxbmn)
 
 ```
 
-After retaining only complete cases with no missing values, we are left with `r print(nrow(nh1516_sub))` observations. 
+From our eligible subset, about 11% had missing values for blood metals Pb, Cd, Mn, and total Hg. Thus, after removing participants with missing values, we are left with `r print(nrow(nh1516_sub))` for analysis.
+
+## Inorganic, Ethyl, and Methyl Mercury
+
+```{r create separate dataset for speciated mercury}
+# assess missingness 
+
+# for ethyl Hg
+nh1516_sub %>%
+  count(is.na(lbxbge))
+# 52 participants missing values.
+
+# for methyl Hg
+nh1516_sub %>%
+  count(is.na(lbxbgm))
+# 50 participants missing values.
+
+# for inorganic Hg
+nh1516_sub %>%
+  count(is.na(lbxihg))
+# 50 participants missing values.
+
+# create separate dataset for speciated mercury, including only the complete cases
+hg1516 <- 
+  nh1516_sub %>% drop_na(lbxbge)
+
+```
+
+Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for blood mercury. After retaining only complete cases, we are left with `r print(nrow(hg1516))` participants for mercury analysis. 
+
+## Urinary Mercury
+
+```{r create urinary mercury dataframe}
+
+# urinary Hg dataframe
+
+# Merge data to create one dataframe per year; then keep only the necessary variables:
+uhg1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)
+uhg1516 <- merge(uhg1516, creatinine, by = "SEQN", all = TRUE)
+# later, exclude those who have WTSA2YR as "NA"
+
+## Here is a list of variables we will need for our analysis:
+# SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA
+# WTSA2YR (NEW WEIGHTING VARIABLE)
+# URXUHG (urine mercury, ng/mL), URXUCR (creatinine, mg/dL)
+
+# Data Cleaning to Create Urinary Hg Data Subset: 
+uhg1516_sub <-
+  uhg1516 %>%
+  select(SEQN, SDDSRVYR, # unique identifier and survey year 
+         RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
+         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info
+         URXUHG, URXUCR) %>% # metals (exclude selenium for now)
+  janitor::clean_names() %>% 
+  mutate(cr_ng_ml = urxucr*10000) %>% # convert creatining from mg/dL to ng/mL
+  mutate(urxuhg_adj = urxuhg/cr_ng_ml) %>% # urine hg adjusted for creatinine 
+  rename(sex = riagendr,
+         age = ridageyr,
+         race = ridreth1) %>% 
+  set_value_labels(                     # Label variable values
+    sex = c("Male" = 1, "Female" = 2), 
+    race = c("Mexican American" = 1,
+             "Other Hispanic" = 2,
+             "NH White" = 3,
+             "NH Black" = 4,
+             "Other including multi" = 5)) %>% 
+  mutate_if(is.labelled, to_factor)  # Treat any labelled variables (e.g. sex) as factors
+
+```
+
+Urinary mercury is eligible to be measured in all participants aged 3 to 5 years and in a one-third subsample of participants aged 6 years and older.
+
+Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
+
+```{r remove NAs and 0 weights for urinary Hg }
+
+# assess missingness of weights variable to see how many were eligible
+# those that were eligible, i.e. all participants 1-11 and half of participants aged 12 and older will have a wtsh2yr value that is not equal to 0 
+uhg1516_sub %>% 
+  count(is.na(wtsa2yr))
+# there are more missing than for blood metals, which makes sense because we sampled only one third of the eligible participants rather than one-half and also are missing data for children < 3 years old
+
+# drop rows missing the weight variable to arrive at the eligible subset
+uhg1516_sub <-
+  uhg1516_sub %>% 
+  drop_na(wtsa2yr) %>%  
+  filter(wtsa2yr != 0) 
+
+```
+
+Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(uhg1516_sub))` were eligible to have urine mercury measured.
+
+```{r drop missing mercury and creatinine}
+
+# assess missing 
+uhg1516_sub %>%
+  count(is.na(urxuhg))
+
+uhg1516_sub %>%
+  count(is.na(urxucr))
+
+uhg1516_sub %>%
+  count(is.na(urxuhg_adj))
+
+# drop rows with missing Hg and creatinine values
+uhg1516_sub <-
+  uhg1516_sub %>% 
+  drop_na(urxuhg, urxucr)
+
+```
+
+Furthermore, out of those eligible, about 4.6% were missing values for urinary mercury. After dropping those with values missing for urinary mercury and/or creatinine (needed for adjustment), we have `r print(nrow(uhg1516_sub))` participants remaining for analysis. 
+
+## Urinary Arsenic 
+
+```{r create urinary arsenic dataframe}
+
+
+
+```
 
 ## Sample Weighting
 
