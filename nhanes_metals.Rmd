@@ -139,7 +139,7 @@ nh1516_sub <-
 
 # Note to self: why are some organic mercury values (the variable I created) negative?? 
 # later, plot mercury broken down as organic and inorganic, but also try breaking down organic to ethyl and methyl
-# or Annie's recommendation was just to plot total and methyl? 
+# or Annie's recommendation was just to plot total and methyl?  
 ```
 
 Blood metals are measured in all participants aged 1-11 years old, and additionally in only a one-half subsample of participants 12 years and older.
@@ -153,12 +153,19 @@ Let's find how many people are missing the weight value, indicating that they di
 nh1516_sub %>% 
   count(is.na(wtsh2yr))
 
+# The appropriate sample weights are provided in the variable WTSH2YR in this data file for all participants and should be used when analyzing these data.
+
+# The analytes included in this dataset were measured for all examined participants aged 1-11 years, and in a one-half subsample of participants 12 years and older. For participants aged 1-11 years their WTSH2YR are equivalent to their MEC exam sample weights. These 1-11 years old participants have completed at least one physical exam component in the MEC; therefore, they all have an exam sample weight larger than “0,” regardless of their lab test results.
+
+# For participants 12 years and older, special sample weights were created for the subsample. These special weights accounted for the additional probability of selection into the subsample, as well as the additional nonresponse to these lab tests. Therefore, if a participant 12 years and older was selected as part of the one-half subsample, but did not provide a blood specimen, he/she would have the sample weight value assigned as “0” in his/her record. 
+# so would including someone with weight 0 make a difference?? Can I just exclude them?? 
+
 # drop rows missing the weight variable to arrive at the eligible subset
 nh1516_sub <-
   nh1516_sub %>% 
   drop_na(wtsh2yr) %>%  
   filter(wtsh2yr != 0) 
- 
+  
 ```
 
 Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(nh1516_sub))` were eligible to have blood metals measured.
@@ -193,7 +200,7 @@ nh1516_sub %>%
 nh1516_sub <- 
   nh1516_sub %>% 
   drop_na(lbxbpb, lbxbmn)
-
+ 
 ```
 
 From our eligible subset, about 11% had missing values for blood metals Pb, Cd, Mn, and total Hg. Thus, after removing participants with missing values, we are left with `r print(nrow(nh1516_sub))` for analysis.
@@ -218,9 +225,11 @@ nh1516_sub %>%
   count(is.na(lbxihg))
 # 50 participants missing values.
 
-# create separate dataset for speciated mercury, including only the complete cases
-hg1516 <- 
-  nh1516_sub %>% drop_na(lbxbge)
+# create separate data subset for speciated mercury including only the complete cases
+hg1516_sub <-  
+  nh1516_sub %>%
+  drop_na(lbxbge) %>% 
+  select(-lbxbpb, -lbxbcd, -lbxbmn)
 
 ```
 
@@ -263,7 +272,7 @@ uhg1516_sub <-
              "NH Black" = 4,
              "Other including multi" = 5)) %>% 
   mutate_if(is.labelled, to_factor)  # Treat any labelled variables (e.g. sex) as factors
-
+ 
 ```
 
 Urinary mercury is eligible to be measured in all participants aged 3 to 5 years and in a one-third subsample of participants aged 6 years and older.
@@ -273,7 +282,7 @@ Let's find how many people are missing the weighting value, indicating that they
 ```{r remove NAs and 0 weights for urinary Hg }
 
 # assess missingness of weights variable to see how many were eligible
-# those that were eligible, i.e. all participants 1-11 and half of participants aged 12 and older will have a wtsh2yr value that is not equal to 0 
+# those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
 uhg1516_sub %>% 
   count(is.na(wtsa2yr))
 # there are more missing than for blood metals, which makes sense because we sampled only one third of the eligible participants rather than one-half and also are missing data for children < 3 years old
@@ -282,7 +291,7 @@ uhg1516_sub %>%
 uhg1516_sub <-
   uhg1516_sub %>% 
   drop_na(wtsa2yr) %>%  
-  filter(wtsa2yr != 0) 
+  filter(wtsa2yr != 0)  
 
 ```
 
@@ -313,35 +322,110 @@ Furthermore, out of those eligible, about 4.6% were missing values for urinary m
 
 ```{r create urinary arsenic dataframe}
 
+# Urinary arsenic dataframe
+
+# Merge data to create one dataframe per year; then keep only the necessary variables:
+uas1516 <- merge(demo1516, creatinine, by = "SEQN", all = TRUE)
+uas1516 <- merge(uas1516, uas_sp, by = "SEQN", all = TRUE)
+uas1516 <- merge(uas1516, uas_t, by = "SEQN", all = TRUE)
+
+uas1516 <- uas1516 %>% 
+  mutate(WTSA2YR = WTSA2YR.x)
+
+# later, exclude those who have WTSA2YR as "NA"
+
+## Here is a list of variables we will need for our analysis:
+# SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA
+# WTSA2YR (NEW WEIGHTING VARIABLE)
+# URXUCR (creatinine, mg/dL)
+# URXUAS3, URXUAS5, URXUAB, URXUAC, URXUDMA, URXUMMA (all in ug/L)
+# URXUAS (total urine arsenic, ug/L)
+
+# Data Cleaning to Create Urinary Hg Data Subset: 
+uas1516_sub <-
+  uas1516 %>%
+  select(SEQN, SDDSRVYR, 
+         RIAGENDR, RIDAGEYR, RIDRETH1, 
+         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, 
+         URXUCR, URXUAS3, URXUAS5, URXUAB, URXUAC, URXUDMA, URXUMMA, URXUAS) %>%
+  janitor::clean_names() %>% 
+  mutate(urxucr = urxucr*10000) %>% # convert creatinine from mg/dL to ug/L 
+  mutate(urxuas3 = urxuas3/urxucr,
+         urxuas5 = urxuas5/urxucr,
+         urxuab = urxuab/urxucr,
+         urxuac = urxuac/urxucr,
+         urxudma = urxudma/urxucr,
+         urxumma = urxumma/urxucr,
+         urxuas = urxuas/urxucr) %>% # urine arsenic adjusted for creatinine 
+  rename(sex = riagendr,
+         age = ridageyr,
+         race = ridreth1) %>% 
+  set_value_labels(                     # Label variable values
+    sex = c("Male" = 1, "Female" = 2), 
+    race = c("Mexican American" = 1,
+             "Other Hispanic" = 2,
+             "NH White" = 3,
+             "NH Black" = 4,
+             "Other including multi" = 5)) %>% 
+  mutate_if(is.labelled, to_factor)  # Treat any labelled variables (e.g. sex) as factors
+ 
+
+```
+
+
+Urinary arsenic (total and speciated) is eligible to be measured in all participants aged 3 to 5 years and in a one-third subsample of participants aged 6 years and older.
+
+Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
+
+```{r remove NAs and 0 weights for urinary arsenic}
+
+# assess missingness of weights variable to see how many were eligible
+# those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
+uas1516_sub %>% 
+  count(is.na(wtsa2yr))
+
+# drop rows missing the weight variable to arrive at the eligible subset
+uas1516_sub <-
+  uas1516_sub %>% 
+  drop_na(wtsa2yr) %>%  
+  filter(wtsa2yr != 0)  
+
+```
+
+Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(uas1516_sub))` were eligible to have urine arsenic measured.
+
+```{r}
+
+# assess missing 
+uas1516_sub %>%
+  count(is.na(urxuas))
+
+uas1516_sub %>% 
+  count(is.na(urxudma))
+
+uhg1516_sub %>%
+  count(is.na(urxucr))
+
+# drop rows with missing total arsenic and creatinine values
+uas1516_sub <-
+  uas1516_sub %>% 
+  drop_na(urxuas, urxucr)
+
+# Note, after this, there is just one person missing a DMA value, let's just exclude them as well 
+uas1516_sub <-
+  uas1516_sub %>% 
+  drop_na(urxudma)
 
 
 ```
+
+Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r print(nrow(uas1516_sub))` participants remaining for analysis. 
 
 ## Sample Weighting
 
 Note that NHANES is designed to sample larger numbers of certain subgroups of particular public health interest (e.g. low income Americans, African Americans). Oversampling is done to increase the reliability and precision of estimates of health status indicators for these population subgroups. To account for this sampling design and these design features in our analysis, it is critical that we apply sample weights.
 
-Continue data cleaning by applying appropriate sample weights: 
-
-```{r sample weighting}
-
-### NOTE: the correct weights to use for this analysis of blood metal data are.... WTSH2YR (double check)
-
-## from NHANES: 
-
-########################################################################
-# The appropriate sample weights are provided in the variable WTSH2YR in this data file for all participants and should be used when analyzing these data.
-
-# The analytes included in this dataset were measured for all examined participants aged 1-11 years, and in a one-half subsample of participants 12 years and older. For participants aged 1-11 years their WTSH2YR are equivalent to their MEC exam sample weights. These 1-11 years old participants have completed at least one physical exam component in the MEC; therefore, they all have an exam sample weight larger than “0,” regardless of their lab test results.
-
-# For participants 12 years and older, special sample weights were created for the subsample. These special weights accounted for the additional probability of selection into the subsample, as well as the additional nonresponse to these lab tests. Therefore, if a participant 12 years and older was selected as part of the one-half subsample, but did not provide a blood specimen, he/she would have the sample weight value assigned as “0” in his/her record. 
-########################################################################
-  
-# you have to choose the survey weights that correspond to the smallest subsample that is relevant for each metal/survey year of interest
-# I think that these metals (Pb, Cd, Hg, Mn) were measured in everybody, check the data documentation and double-check with Annie
-
-
-```
+Continue data cleaning by applying appropriate sample weights.
 
 ## Survey Weights
 
@@ -351,20 +435,39 @@ Continue data cleaning by applying appropriate sample weights:
 # Primary Sampling Units (PSU)
 
 # Here we use "svydesign" to assign the weights. We will use this new survey design variable when running our analyses
-nhanes.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
+blood.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
                         strata = ~sdmvstra, # strata IDs
                         weights = ~wtsh2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
                         nest = TRUE,
                         data = nh1516_sub) # call the dataframe 
 
-summary(nhanes.svy) 
+summary(blood.svy) 
 
 # account for non-response (since there are many sub-components of NHANES, incl. interview, labs, exposure data)
 # thus, sub-samples have different weights because not all participants are invited to participate in all sub-components
 
-
 ## If you want to combine weights across sub-samples within a survey cycle or across survey cycles, this is even more complex
 ## Advice: don’t do it unless you understand what you are doing.  
+
+# urinary Hg
+########################################
+urine.hg.svy <- svydesign(ids = ~sdmvpsu, 
+                        strata = ~sdmvstra, 
+                        weights = ~wtsa2yr, 
+                        nest = TRUE,
+                        data = uhg1516_sub)  
+
+summary(urine.hg.svy) 
+
+# urinary arsenic
+########################################
+arsenic.svy <- svydesign(ids = ~sdmvpsu,
+                        strata = ~sdmvstra, 
+                        weights = ~wtsa2yr, 
+                        nest = TRUE,
+                        data = uas1516_sub) 
+
+summary(arsenic.svy) 
 
 ```
 
