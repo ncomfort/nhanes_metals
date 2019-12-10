@@ -53,49 +53,56 @@ We will conduct this analysis in one two-year survey cycle (2015/2016), *since c
 
 The data files must first be downloaded. They can be found and downloaded at the NHANES website: https://wwwn.cdc.gov/nchs/nhanes/continuousnhanes/default.aspx?BeginYear=2015 
 
-```{r NHANES metal data}
+```{r NHANES data}
 
 # Load data
 
 # Demographic files for 2015-2016
-demo1516 <- read.xport("DEMO_I.XPT")
+demo1516 <- read.xport("DEMO_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/DEMO_I.htm
 
 # Laboratory blood Pb, Cd, Hg, Mn files for 2015-2016
-cd1516 <- read.xport("PBCD_I.XPT")
+cd1516 <- read.xport("PBCD_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/PBCD_I.htm
 ### Eligible Sample: All examined participants aged 1-11 years old, and a one-half sample from participants aged 12 years and older were eligible. 
 
 # Inorganic, Ethyl, Methyl Mercury for 2015-2016
-hg1516 <- read.xport("IHGEM_I.XPT")
+hg1516 <- read.xport("IHGEM_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/IHGEM_I.htm
 ### Eligible Sample: All examined participants aged 1-11 years old, and a one-half sample from participants aged 12 years and older were eligible.
 
 # Total Mercury in Urine for 2015-2016
-uhg1516 <- read.xport("UHG_I.XPT")
+uhg1516 <- read.xport("UHG_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UHG_I.htm
 ### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
 #### Note that this is different weighting scheme than for blood metals
 
 ## Arsenic
 # Speciated urinary arsenics for 2015-2016
-uas_sp <- read.xport("UAS_I.XPT")
+uas_sp <- read.xport("UAS_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UAS_I.htm
 ### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
 
 # Total urinary arsenic for 2015-2016
-uas_t <- read.xport("UTAS_I.XPT")
+uas_t <- read.xport("UTAS_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/UTAS_I.htm
 ### Eligible Sample: All examined participants aged 3 to 5 years were eligible and participants aged 6 years and older from a one-third subsample were eligible.
 
 # creatinine for 2015-2016 (for adjustment of urinary arsenic and urinary mercury)
-creatinine <- read.xport("ALB_CR_I.XPT")
+creatinine <- read.xport("ALB_CR_I.XPT") %>% 
+  arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/ALB_CR_I.htm
 ### Eligible Sample: Examined participants aged 3 years and older were eligible.
 
 ```
 
-## Blood Metals
+## Blood Metals: Subset Data Cleaning and Evaluation
 
 ```{r create blood metal dataframe}
 
@@ -170,16 +177,21 @@ nh1516_sub <-
 
 Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(nh1516_sub))` were eligible to have blood metals measured.
 
+### Blood Metals: Missing Data
+
 Let's further evaluate missing data. Of those eligible, how many did not have blood metals measured? 
 
 ```{r evaluate missing metal data}
 
 # of those eligible, how many are missing values of our metals of interest (Pb, Cd, Hg, Mn)? 
 
+## NOTE: According to the NHANES website, as a general rule, if 10% or less of your data for a variable are missing from your analytic dataset, it is usually acceptable to continue your analysis without further evaluation or adjustment
+### However, if > 10% of the data for a variable are missing, you may need to determine whether the missing values are distributed equally across socio-demographic characteristics, and decide whether further imputation of missing values or use of adjusted weights are necessary 
+
 # for Pb
 nh1516_sub %>%
   count(is.na(lbxbpb))
-# 10.88% still missing data.... seems extremely high 
+# 10.88% still missing data.... seems extremely high, should probably check to see whether missingness is at random or not 
 
 # for Cd
 nh1516_sub %>%
@@ -188,13 +200,13 @@ nh1516_sub %>%
  
 # for total Hg 
 nh1516_sub %>%
-  count(is.na(lbxthg))
-# 10.88% missing data 
+  count(is.na(lbxthg)) 
+# 10.88% missing data  
 
-# for Mn
+# for Mn 
 nh1516_sub %>%
   count(is.na(lbxbmn))
-# 10.89% missing data 
+# 10.89% missing data  
 
 # drop rows with missing values
 nh1516_sub <- 
@@ -205,7 +217,9 @@ nh1516_sub <-
 
 From our eligible subset, about 11% had missing values for blood metals Pb, Cd, Mn, and total Hg. Thus, after removing participants with missing values, we are left with `r print(nrow(nh1516_sub))` for analysis.
 
-## Inorganic, Ethyl, and Methyl Mercury
+## Inorganic, Ethyl, and Methyl Mercury: Subset Data Cleaning and Evaluation
+
+### Missing Data
 
 ```{r create separate dataset for speciated mercury}
 # assess missingness 
@@ -235,7 +249,7 @@ hg1516_sub <-
 
 Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for blood mercury. After retaining only complete cases, we are left with `r print(nrow(hg1516))` participants for mercury analysis. 
 
-## Urinary Mercury
+## Urinary Mercury: Subset Data Cleaning and Evaluation
 
 ```{r create urinary mercury dataframe}
 
@@ -276,6 +290,8 @@ uhg1516_sub <-
 ```
 
 Urinary mercury is eligible to be measured in all participants aged 3 to 5 years and in a one-third subsample of participants aged 6 years and older.
+
+### Urinary Mercury: Missing Data
 
 Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
 
@@ -318,7 +334,7 @@ uhg1516_sub <-
 
 Furthermore, out of those eligible, about 4.6% were missing values for urinary mercury. After dropping those with values missing for urinary mercury and/or creatinine (needed for adjustment), we have `r print(nrow(uhg1516_sub))` participants remaining for analysis. 
 
-## Urinary Arsenic 
+## Urinary Arsenic: Subset Data Cleaning and Evaluation
 
 ```{r create urinary arsenic dataframe}
 
@@ -372,8 +388,9 @@ uas1516_sub <-
 
 ```
 
-
 Urinary arsenic (total and speciated) is eligible to be measured in all participants aged 3 to 5 years and in a one-third subsample of participants aged 6 years and older.
+
+### Urinary Arsenic: Missing Data
 
 Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
 
@@ -394,7 +411,7 @@ uas1516_sub <-
 
 Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(uas1516_sub))` were eligible to have urine arsenic measured.
 
-```{r}
+```{r drop missing urinary arsenic and DMA}
 
 # assess missing 
 uas1516_sub %>%
@@ -416,12 +433,25 @@ uas1516_sub <-
   uas1516_sub %>% 
   drop_na(urxudma)
 
-
 ```
 
 Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r print(nrow(uas1516_sub))` participants remaining for analysis. 
 
-## Sample Weighting
+### Total N's
+
+There were `r print(nrow(nh1516))` participants surveyed in the NHANES 2015-2016 cycle.
+
+In our data subsets, there are:
+
+* `r print(nrow(nh1516_sub))` participants with Pb, Cd, Mn, and total Hg measured in blood,
+
+* `r print(nrow(hg1516_sub))` participants with inorganic, ethyl, and methyl Hg measured in blood,
+
+* `r print(nrow(uhg1516_sub))` participants Hg measured in urine,
+
+* `r print(nrow(uas1516_sub))` participants with total and speciated arsenic measured in urine.
+
+# Sample Weighting
 
 Note that NHANES is designed to sample larger numbers of certain subgroups of particular public health interest (e.g. low income Americans, African Americans). Oversampling is done to increase the reliability and precision of estimates of health status indicators for these population subgroups. To account for this sampling design and these design features in our analysis, it is critical that we apply sample weights.
 
@@ -432,9 +462,10 @@ Continue data cleaning by applying appropriate sample weights.
 ```{r survey weighting, echo=FALSE}
 
 # Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-# Primary Sampling Units (PSU)
-
+# Primary Sampling Units (PSU) 
+ 
 # Here we use "svydesign" to assign the weights. We will use this new survey design variable when running our analyses
+# Blood Pb, Cd, Mn
 blood.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
                         strata = ~sdmvstra, # strata IDs
                         weights = ~wtsh2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
@@ -443,13 +474,17 @@ blood.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
 
 summary(blood.svy) 
 
-# account for non-response (since there are many sub-components of NHANES, incl. interview, labs, exposure data)
-# thus, sub-samples have different weights because not all participants are invited to participate in all sub-components
+# Blood Hg
+########################################
+blood.hg.svy <- svydesign(ids = ~sdmvpsu, 
+                        strata = ~sdmvstra, 
+                        weights = ~wtsh2yr, 
+                        nest = TRUE,
+                        data = hg1516_sub) # call the dataframe 
 
-## If you want to combine weights across sub-samples within a survey cycle or across survey cycles, this is even more complex
-## Advice: don’t do it unless you understand what you are doing.  
+summary(blood.hg.svy) 
 
-# urinary Hg
+# Urinary Hg
 ########################################
 urine.hg.svy <- svydesign(ids = ~sdmvpsu, 
                         strata = ~sdmvstra, 
@@ -469,13 +504,176 @@ arsenic.svy <- svydesign(ids = ~sdmvpsu,
 
 summary(arsenic.svy) 
 
+# account for non-response (since there are many sub-components of NHANES, incl. interview, labs, exposure data)
+# thus, sub-samples have different weights because not all participants are invited to participate in all sub-components
+
+## If you want to combine weights across sub-samples within a survey cycle or across survey cycles, this is even more complex
+## Advice: don’t do it unless you understand what you are doing.  
+
+```
+
+## Survey-Weighted Data Distribution
+
+### Data Distribution: Blood Metals
+
+```{r check distributions and describe impact of influential outliers blood metal}
+
+# check the distribution and normality of the data and identify outliers for continuous variables
+# "svyhist" creates histograms accounting for survey weights
+
+## Lead
+svyhist(~lbxbpb,
+        blood.svy,
+        main = "Survey weighted average blood Pb", col = "blue")
+# right-skewed
+
+# Pb log transformed
+svyhist(~log(lbxbpb),
+        blood.svy,
+        main =  "Survey weighted log(average blood Pb)", col = "blue")
+# log transformed data now normal
+
+## Cadmium
+svyhist(~lbxbcd,
+        blood.svy,
+        main = "Survey weighted average blood Cd", col = "red")
+# right-skewed
+
+# Cd log transformed
+svyhist(~log(lbxbcd),
+        blood.svy,
+        main = "Survey weighted log(average blood Cd)", col = "red")
+
+## log-transformed Cd still not quite normal??? 
+
+## Total Mercury
+svyhist(~lbxthg,
+        blood.svy,
+        main = "Survey weighted average blood total Hg", col = "cyan")
+# right-skewed
+
+# tHg log transformed
+svyhist(~log(lbxthg),
+        blood.svy,
+        main = "Survey weighted log(average blood total Hg)", col = "cyan")
+## log-transformed tHg still not quite normal??? 
+ 
+## Manganese 
+svyhist(~lbxbmn,
+        blood.svy, 
+        main = "Survey weighted average blood Mn", col = "yellow")
+# right-skewed
+
+# Mn log transformed 
+svyhist(~log(lbxbmn),
+        blood.svy,
+        main = "Survey weighted log(average blood Mn)", col = "yellow")
+# log-transformed now normal
+
+## Do I have to test these distributions for normality statistically?? 
+```
+
+### Data Distribution: Inorganic, Ethyl, Methyl Mercury
+
+```{r check distributions and describe impact of influential outliers speciated blood Hg}
+
+# check the distribution and normality of the data and identify outliers for continuous variables
+# "svyhist" creates histograms accounting for survey weights
+
+## Inorganic Hg
+svyhist(~lbxihg,
+        blood.hg.svy, 
+        main = "Survey weighted average blood inorganic Hg", col = "yellow")
+# right-skewed
+
+# iHg log transformed
+svyhist(~log(lbxihg),
+        blood.hg.svy,
+        main = "Survey weighted log(average blood inorganic Hg)", col = "yellow")
+# still not normal...
+
+## Ethyl Hg
+svyhist(~lbxbge,
+        blood.hg.svy, 
+        main = "Survey weighted average blood ethyl Hg", col = "yellow")
+# right-skewed
+
+# eHg log transformed
+svyhist(~log(lbxbge),
+        blood.hg.svy, 
+        main = "Survey weighted log(average blood ethyl Hg)", col = "yellow")
+# still not normal.... 
+
+## Methyl Hg
+svyhist(~lbxbgm,
+        blood.hg.svy, 
+        main = "Survey weighted average blood MeHg", col = "yellow")
+# right-skewed 
+
+# meHg log transformed
+svyhist(~log(lbxbgm),
+        blood.hg.svy, 
+        main = "Survey weighted log(average blood MeHg)", col = "yellow")
+# still not quite normal.... 
+
+```
+
+### Data Distribution: Urinary Mercury
+
+```{r check distributions and describe impact of influential outliers urinary Hg}
+
+# check the distribution and normality of the data and identify outliers for continuous variables
+
+# adjusted urinary Hg
+svyhist(~urxuhg_adj,
+        urine.hg.svy, 
+        main = "Survey weighted average urinary Hg, creatinine-adjusted", col = "yellow")
+# right-skewed
+
+# log-transformed adjusted urinary Hg
+svyhist(~log(urxuhg_adj),
+        urine.hg.svy, 
+        main = "Survey weighted log(average creatinine-adjusted urinary Hg)", col = "yellow")
+# normal 
+
+```
+
+### Data Distribution: Urinary Arsenic
+
+```{r check distributions and describe impact of influential outliers urinary As}
+
+# check the distribution and normality of the data and identify outliers for continuous variables
+
+## Total Arsenic
+svyhist(~urxuas, # already adjusted for creatinine in this dataset 
+        arsenic.svy,
+        main = "Survey weighted average urinary As, creatinine-adjusted", col = "blue")
+
+# log transformed
+svyhist(~log(urxuas),
+        arsenic.svy,
+        main = "Survey weighted log(average urinary As, creatinine-adjusted)", col = "blue")
+## looks much more normal 
+
+## DMA
+svyhist(~urxudma, # already adjusted for creatinine in this dataset 
+        arsenic.svy,
+        main = "Survey weighted average urinary DMA, creatinine-adjusted", col = "red")
+# right-skewed 
+
+# log transformed
+svyhist(~log(urxudma),
+        arsenic.svy,
+        main = "Survey weighted log(average urinary DMA, creatinine-adjusted)", col = "red")
+# normal 
+
 ```
 
 ## Descriptive Statistics
 
 Find the mean levels and SE of Pb, Cd, Hg (inorganic and organic), and Mn in the US population (accounting for survey weights and design). 
 
-```{r descriptive stats using survey functions}
+```{r example descriptive stats using survey functions, eval=FALSE, include=FALSE}
 
 # useful survey functions: 
 
@@ -528,6 +726,18 @@ svyquantile(~lbxbpb, # continuous variable
 
 ## svychisq: Contingency table and chi-squared tests for survey data; weighted cross tabulations
  
+```
+
+```{r descriptive stats for Pb, Cd, Mn, total Hg}
+
+```
+
+```{r descriptive stats for speciated Hg}
+
+```
+
+```{r descriptive stats for urinary Hg}
+
 ```
 
 
@@ -1018,71 +1228,5 @@ svychisq(~htn+sex,
 ```
 
 
-## Data Distributions
-
-```{r}
-
-# Lead
-############################################
- 
-# "svyhist" creates histograms accounting for survey weights
-svyhist(~lbxbpb,
-        nhanes.svy,
-        main = "Survey weighted average blood Pb", col = "blue")
-
-# log transformed
-svyhist(~log(lbxbpb),
-        nhanes.svy,
-        main=  "Survey weighted log(average blood Pb)", col = "blue")
-
-# Cadmium
-############################################
-svyhist(~lbxbcd,
-        nhanes.svy,
-        main= "Survey weighted average blood Pb", col = "blue")
-
-# log transformed
-svyhist(~log(lbxbcd),
-        nhanes.svy,
-        main = "Survey weighted log(average blood Pb)", col = "blue")
-
-# Mercury
-############################################
-svyhist(~lbxthg,
-        nhanes.svy,
-        main = "Survey weighted average blood Pb", col = "blue")
-
-# log transformed
-svyhist(~log(lbxthg),
-        nhanes.svy,
-        main = "Survey weighted log(average blood Pb)", col = "blue")
- 
-# Manganese 
-############################################
-svyhist(~lbxbmn,
-        nhanes.svy, 
-        main = "Survey weighted average blood Pb", col = "blue")
-
-# log transformed 
-svyhist(~log(lbxbmn),
-        nhanes.svy,
-        main = "Survey weighted log(average blood Pb)", col = "blue")
-
-# log transformed distributions look more normal! 
-# so should conduct t tests on the log transformed data
-
-# Arsenic
-############################################
-svyhist(~urxuas,
-        arsenic.svy,
-        main = "Survey weighted average urinary As", col = "blue")
-
-# log transformed
-svyhist(~log(urxuas),
-        arsenic.svy,
-        main = "Survey weighted log(average urinary As)", col = "blue")
-## looks much more normal 
-
-```
 
 
