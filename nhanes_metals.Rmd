@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ##  install necessary packages
 
 #install.packages("tidyverse")
-#install.packages("NHANES")
+#install.packages("NHANES") # example NHANES data to play with 
 #install.packages("survey") # Used to take into account complex survey designs like NHANES
 ## Documentation for this package is: https://cran.r-project.org/web/packages/survey/survey.pdf
 
@@ -167,15 +167,15 @@ nh1516_sub %>%
 # For participants 12 years and older, special sample weights were created for the subsample. These special weights accounted for the additional probability of selection into the subsample, as well as the additional nonresponse to these lab tests. Therefore, if a participant 12 years and older was selected as part of the one-half subsample, but did not provide a blood specimen, he/she would have the sample weight value assigned as “0” in his/her record. 
 # so would including someone with weight 0 make a difference?? Can I just exclude them?? 
 
-# drop rows missing the weight variable to arrive at the eligible subset
-nh1516_sub <-
-  nh1516_sub %>% 
-  drop_na(wtsh2yr) %>%  
-  filter(wtsh2yr != 0) 
-  
+# drop rows missing the weight variable to arrive at the eligible  
+nh1516_sub <- 
+  nh1516_sub %>%  
+  drop_na(wtsh2yr) %>%   
+  filter(wtsh2yr != 0)  
+   
 ```
 
-Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(nh1516_sub))` were eligible to have blood metals measured.
+Of the 9,971 participants surveyed in 2015-2016, `r {nrow(nh1516_sub)}` were eligible to have blood metals measured.
 
 ### Blood Metals: Missing Data
 
@@ -191,7 +191,7 @@ Let's further evaluate missing data. Of those eligible, how many did not have bl
 # for Pb
 nh1516_sub %>%
   count(is.na(lbxbpb))
-# 10.88% still missing data.... seems extremely high, should probably check to see whether missingness is at random or not 
+# 609, or 10.88% still missing data.... seems extremely high, should probably check to see whether missingness is at random or not 
 
 # for Cd
 nh1516_sub %>%
@@ -215,11 +215,11 @@ nh1516_sub <-
  
 ```
 
-From our eligible subset, about 11% had missing values for blood metals Pb, Cd, Mn, and total Hg. Thus, after removing participants with missing values, we are left with `r print(nrow(nh1516_sub))` for analysis.
+From our eligible subset, about 11% had missing values for blood metals Pb, Cd, Mn, and total Hg. Thus, after removing participants with missing values, we are left with `r {nrow(nh1516_sub)}` for analysis.
 
 ## Inorganic, Ethyl, and Methyl Mercury: Subset Data Cleaning and Evaluation
 
-### Missing Data
+### Inorganic, Ethyl, and Methyl Mercury: Missing Data
 
 ```{r create separate dataset for speciated mercury}
 # assess missingness 
@@ -242,22 +242,28 @@ nh1516_sub %>%
 # create separate data subset for speciated mercury including only the complete cases
 hg1516_sub <-  
   nh1516_sub %>%
-  drop_na(lbxbge) %>% 
+  drop_na(lbxbge) %>%  
   select(-lbxbpb, -lbxbcd, -lbxbmn)
 
 ```
 
-Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for blood mercury. After retaining only complete cases, we are left with `r print(nrow(hg1516))` participants for mercury analysis. 
+Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for blood mercury. After retaining only complete cases, we are left with `r {nrow(hg1516_sub)}` participants for mercury analysis. 
 
 ## Urinary Mercury: Subset Data Cleaning and Evaluation
+
+*As we can see, there was much higher concentrations of organic Hg than inorganic Hg for Hg measured in blood (double-check)*
+
+The concentration of total Hg in urine is a biomarker of exposure primarily to elemental and inorganic Hg, although some Hg in urine comes from de-methylation of methyl Hg in blood (Abe et al., 1995). Thus, examining total Hg in urine better reflects exposure to inorganic Hg.
+
+NHANES 2015/2016 collected information on Hg in urine. We will analyze this data from NHANES 2015/2016 as well.
 
 ```{r create urinary mercury dataframe}
 
 # urinary Hg dataframe
 
-# Merge data to create one dataframe per year; then keep only the necessary variables:
-uhg1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)
-uhg1516 <- merge(uhg1516, creatinine, by = "SEQN", all = TRUE)
+# Merge data to create one dataframe per year; then keep only the necessary variables: 
+uhg1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE) 
+uhg1516 <- merge(uhg1516, creatinine, by = "SEQN", all = TRUE) 
 # later, exclude those who have WTSA2YR as "NA"
 
 ## Here is a list of variables we will need for our analysis:
@@ -296,7 +302,7 @@ Urinary mercury is eligible to be measured in all participants aged 3 to 5 years
 Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
 
 ```{r remove NAs and 0 weights for urinary Hg }
-
+ 
 # assess missingness of weights variable to see how many were eligible
 # those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
 uhg1516_sub %>% 
@@ -311,13 +317,13 @@ uhg1516_sub <-
 
 ```
 
-Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(uhg1516_sub))` were eligible to have urine mercury measured.
+Of the 9,971 participants surveyed in 2015-2016, `r {nrow(uhg1516_sub)}` were eligible to have urine mercury measured.
 
 ```{r drop missing mercury and creatinine}
 
 # assess missing 
 uhg1516_sub %>%
-  count(is.na(urxuhg))
+  count(is.na(urxuhg)) 
 
 uhg1516_sub %>%
   count(is.na(urxucr))
@@ -332,7 +338,7 @@ uhg1516_sub <-
 
 ```
 
-Furthermore, out of those eligible, about 4.6% were missing values for urinary mercury. After dropping those with values missing for urinary mercury and/or creatinine (needed for adjustment), we have `r print(nrow(uhg1516_sub))` participants remaining for analysis. 
+Furthermore, out of those eligible, about 4.6% were missing values for urinary mercury. After dropping those with values missing for urinary mercury and/or creatinine (needed for adjustment), we have `r {nrow(uhg1516_sub)}` participants remaining for analysis. 
 
 ## Urinary Arsenic: Subset Data Cleaning and Evaluation
 
@@ -395,7 +401,7 @@ Urinary arsenic (total and speciated) is eligible to be measured in all particip
 Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
 
 ```{r remove NAs and 0 weights for urinary arsenic}
-
+ 
 # assess missingness of weights variable to see how many were eligible
 # those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
 uas1516_sub %>% 
@@ -409,10 +415,10 @@ uas1516_sub <-
 
 ```
 
-Of the 9,971 participants surveyed in 2015-2016, `r print(nrow(uas1516_sub))` were eligible to have urine arsenic measured.
+Of the 9,971 participants surveyed in 2015-2016, `r {nrow(uas1516_sub)}` were eligible to have urine arsenic measured.
 
 ```{r drop missing urinary arsenic and DMA}
-
+ 
 # assess missing 
 uas1516_sub %>%
   count(is.na(urxuas))
@@ -435,27 +441,27 @@ uas1516_sub <-
 
 ```
 
-Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r print(nrow(uas1516_sub))` participants remaining for analysis. 
+Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r {nrow(uas1516_sub)}` participants remaining for analysis. 
 
 ### Total N's
 
-There were `r print(nrow(nh1516))` participants surveyed in the NHANES 2015-2016 cycle.
+There were `r {nrow(nh1516)}` participants surveyed in the NHANES 2015-2016 cycle.
 
 In our data subsets, there are:
 
-* `r print(nrow(nh1516_sub))` participants with Pb, Cd, Mn, and total Hg measured in blood,
+* `r {nrow(nh1516_sub)}` participants with Pb, Cd, Mn, and total Hg measured in blood,
 
-* `r print(nrow(hg1516_sub))` participants with inorganic, ethyl, and methyl Hg measured in blood,
+* `r {nrow(hg1516_sub)}` participants with inorganic, ethyl, and methyl Hg measured in blood,
 
-* `r print(nrow(uhg1516_sub))` participants Hg measured in urine,
+* `r {nrow(uhg1516_sub)}` participants Hg measured in urine,
 
-* `r print(nrow(uas1516_sub))` participants with total and speciated arsenic measured in urine.
+* `r {nrow(uas1516_sub)}` participants with total and speciated arsenic measured in urine.
 
 # Sample Weighting
 
 Note that NHANES is designed to sample larger numbers of certain subgroups of particular public health interest (e.g. low income Americans, African Americans). Oversampling is done to increase the reliability and precision of estimates of health status indicators for these population subgroups. To account for this sampling design and these design features in our analysis, it is critical that we apply sample weights.
 
-Continue data cleaning by applying appropriate sample weights.
+Continue data cleaning by applying appropriate sample weights, which will allow us to calculate unbiased estimates.
 
 ## Survey Weights
 
@@ -743,15 +749,15 @@ svyquantile(~lbxbpb, # continuous variable
 
 The following are the estimated means and SEs of blood levels of lead, cadmium, mercury (total, inorganic, and organic), and manganese in the 2015/2016 US population: 
 
-`r (print(mean_metals_table))`
+r (print(mean_metals_table))
 
 Broken down by sex: 
 
-`r (print(sex_mean_metals_table))`
+r (print(sex_mean_metals_table))
 
 Note that, as expected, males have higher mean Pb levels. It also appears that females have higher Mn levels. Are these differences significant? Let's conduct t tests.
 
-```{r t tests}
+```{r t tests, eval=FALSE, include=FALSE}
 
 ## svyttest: t tests
 
@@ -802,7 +808,7 @@ We define "child" as age < 12 years,
 "adult" as age 22-65 years, 
 and "elderly" as age > 65 years.
 
-```{r differences across life stages}
+```{r differences across life stages, eval=FALSE, include=FALSE}
 
 ## create new life stage variable
 nh1516_sub <-
@@ -835,7 +841,7 @@ life_means_table <-
   svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, 
       by = ~sex+life_stage, 
       nhanes.svy, 
-      svymean) %>% 
+      svymean) %>%  
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"),
                 full_width = F) 
@@ -844,7 +850,7 @@ life_means_table <-
 
 Across sex and age groups: 
 
-`r (print(life_means_table))`
+* print life means data table 
 
 Are these differences seen across sex and age group significant? 
 
@@ -854,7 +860,7 @@ Are these differences seen across sex and age group significant?
 
 ```
 
-```{r boxplots from original data}
+```{r boxplots from original data, eval=FALSE, include=FALSE}
 
 # for Pb
 nh1516_sub %>% 
@@ -868,7 +874,7 @@ nh1516_sub %>%
 ```
 
 
-```{r graph these means for sex and age group, Pb}
+```{r graph these means for sex and age group, Pb, eval=FALSE, include=FALSE}
 
 # first, create a new dataset from the life_means_table data
 # (did manually by copying and pasting the data into a csv) - can I do this from the original data?? 
@@ -925,158 +931,94 @@ tt_pb_young
 
 nh1516_young %>% 
   na.omit() %>% 
-  ggplot(aes(x = age, 
+  ggplot(aes(x = age,  
              y = lbxbpb,  # change for different metals
              fill = sex))
 ## get this to work 
 
 ```
 
-```{r graphs for other metals}
+```{r graphs for other metals, evaL=FALSE, include=FALSE}
 
-# Cadmium
-cd_plot <-
-life_means_data %>% 
-  na.omit() %>% 
-  ggplot(aes(x = life_stage, 
-             y = Cd,
-             fill = Sex)) +
-  geom_col(position = "dodge") +
-  geom_errorbar(aes(ymin = Cd - se.lbxbcd,
-                    ymax = Cd + se.lbxbcd),
-                width = 0.2,
-                position = position_dodge(0.9)) +
-  labs(title="Levels of Blood Cd in Males vs Females Across Life Stages",
-       x = "Life Stage",
-       y = "Average Blood Cd (ug/L)",
-       caption = "NHANES 2015/2016 data") 
-
-# Manganese
-mn_plot <-
-life_means_data %>% 
-  na.omit() %>% 
-  ggplot(aes(x = life_stage, 
-             y = Mn,  # change for different metals
-             fill = Sex)) +
-  geom_col(position = "dodge") +
-  geom_errorbar(aes(ymin = Mn - se.lbxbmn, # change for different metalas
-                    ymax = Mn + se.lbxbmn),
-                width = 0.2,
-                position = position_dodge(0.9)) +
-  labs(title="Levels of Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
-       x = "Life Stage",
-       y = "Average Blood Mn (ug/L)",
-       caption = "NHANES 2015/2016 data") 
-  
-# Mercury
-# mercury data manipulation
-hg_data <- 
-  life_means_data %>% 
-  mutate("total" = `Total Hg`,
-         "inorganic" = `Inorganic Hg`,
-         "organic" = `Organic Hg`) %>% 
-  select(-Pb, -Cd, -Mn, -se.lbxbpb, -se.lbxbcd, -se.lbxbmn) %>% 
-  pivot_longer(inorganic:organic,
-               names_to = "type",
-               values_to = "value")
-
-#m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
-#m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
-
-# plot
-hg_plot <-
-  hg_data %>% 
-  na.omit() %>% 
-  ggplot(aes(x = Sex,
-             y = value,
-             fill = type)) +
-  geom_col() +
-  facet_grid(. ~life_stage) +
-  labs(title = "Levels of Blood Hg in Males vs Females Across Life Stages", # edit labels for diff graphs
-       y = "Average Blood Hg (ug/L)",
-       caption = "NHANES 2015/2016 data") +
-  scale_fill_discrete(name = "Mercury Type")
+# # Cadmium
+# cd_plot <-
+# life_means_data %>% 
+#   na.omit() %>% 
+#   ggplot(aes(x = life_stage, 
+#              y = Cd,
+#              fill = Sex)) +
+#   geom_col(position = "dodge") +
+#   geom_errorbar(aes(ymin = Cd - se.lbxbcd,
+#                     ymax = Cd + se.lbxbcd),
+#                 width = 0.2,
+#                 position = position_dodge(0.9)) +
+#   labs(title="Levels of Blood Cd in Males vs Females Across Life Stages",
+#        x = "Life Stage",
+#        y = "Average Blood Cd (ug/L)",
+#        caption = "NHANES 2015/2016 data") 
+# 
+# # Manganese
+# mn_plot <-
+# life_means_data %>% 
+#   na.omit() %>% 
+#   ggplot(aes(x = life_stage, 
+#              y = Mn,  # change for different metals
+#              fill = Sex)) +
+#   geom_col(position = "dodge") +
+#   geom_errorbar(aes(ymin = Mn - se.lbxbmn, # change for different metalas
+#                     ymax = Mn + se.lbxbmn),
+#                 width = 0.2,
+#                 position = position_dodge(0.9)) +
+#   labs(title="Levels of Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
+#        x = "Life Stage",
+#        y = "Average Blood Mn (ug/L)",
+#        caption = "NHANES 2015/2016 data") 
+#   
+# # Mercury
+# # mercury data manipulation
+# hg_data <- 
+#   life_means_data %>% 
+#   mutate("total" = `Total Hg`,
+#          "inorganic" = `Inorganic Hg`,
+#          "organic" = `Organic Hg`) %>% 
+#   select(-Pb, -Cd, -Mn, -se.lbxbpb, -se.lbxbcd, -se.lbxbmn) %>% 
+#   pivot_longer(inorganic:organic,
+#                names_to = "type",
+#                values_to = "value")
+# 
+# #m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
+# #m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
+# 
+# # plot
+# hg_plot <-
+#   hg_data %>% 
+#   na.omit() %>% 
+#   ggplot(aes(x = Sex,
+#              y = value,
+#              fill = type)) +
+#   geom_col() +
+#   facet_grid(. ~life_stage) +
+#   labs(title = "Levels of Blood Hg in Males vs Females Across Life Stages", # edit labels for diff graphs
+#        y = "Average Blood Hg (ug/L)",
+#        caption = "NHANES 2015/2016 data") + 
+#   scale_fill_discrete(name = "Mercury Type")
 
 ## how to add error bars here?????
 
 ```
 
 
-`r (print(pb_plot))`
+r (print(pb_plot))
 
-`r (print(cd_plot))`
+r (print(cd_plot))
 
-`r (print(mn_plot))`
+r (print(mn_plot))
 
-`r (print(hg_plot))`
+r (print(hg_plot))
 
-As we can see, there was much higher concentrations of organic Hg than inorganic Hg for Hg measured in blood.
 
-The concentration of total Hg in urine is a biomarker of exposure primarily to elemental and inorganic Hg, although some Hg in urine comes from de-methylation of methyl Hg in blood (Abe et al., 1995). Thus, examining total Hg in urine better reflects exposure to inorganic Hg.
 
-NHANES 2015/2016 collected information on Hg in urine. We will analyze this data from NHANES 2015/2016 as well.
-
-```{r urine mercury data cleaning}
-
-# Merge data to create one dataframe per year/NHANES cycle
-uhg_1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)
-
-# Retain only necessary variables:
-uhg_1516 <-
-  uhg_1516 %>%
-  select(SEQN, SDDSRVYR, # unique identifier and survey year 
-         RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
-         WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info, NOTICE IT'S DIFFERENT NOW 
-         URXUHG) # urine mercury
- 
-head(uhg_1516)
-
-# clean / rename variable names
-uhg_1516 <-
-  uhg_1516 %>%
-  janitor::clean_names() %>% 
-  rename(sex = riagendr,
-         age = ridageyr,
-         race = ridreth1)
-
-glimpse(uhg_1516)
-
-# Label variable values
-uhg_1516 <-
-  uhg_1516 %>%
-  set_value_labels(
-    sex = c("Male" = 1, "Female" = 2), 
-    race = c("Mexican American" = 1, "Other Hispanic" = 2, "NH White" = 3, "NH Black" = 4, "Other including multi" = 5))
-
-glimpse(uhg_1516)
-
-# Treat any labelled variables (e.g. sex) as factors
-uhg_1516 <-
-  uhg_1516 %>%
-  mutate_if(is.labelled, to_factor)
-
-# Exclude those who have WTSA2YR as "NA"
-uhg_1516 <-
-  uhg_1516 %>% 
-  drop_na(wtsa2yr, urxuhg)
-
-```
-
-Next, we set the survey design again to look at the mean urinary mercury across males and females.
-
-```{r urine mercury survey weighting}
-
-uhg.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
-                        strata = ~sdmvstra, # strata IDs
-                        weights = ~wtsa2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
-                        nest = TRUE,
-                        data = uhg_1516) # call the dataframe 
-
-summary(uhg.svy) 
-
-```
-
-```{r urine mercury statistics and graphing}
+```{r urine mercury statistics and graphing, eval=FALSE, include=FALSE}
 
 ## svymean: Computes means and SEs for survey data
 svymean(~urxuhg, # continuous variable(s)
@@ -1134,14 +1076,14 @@ tt_uhg
 ```
 
 Mean and Standard Deviation of Urinary (Elemental/Inorganic) Hg: 
-`r (print(urinary_hg_table))`
+r (print(urinary_hg_table))
 
 Broken down by sex: 
-`r (print(sex_urxhg_table))`
+r (print(sex_urxhg_table))
 
 Lastly, we will examine urinary arsenic (combining species into organic and inorganic): 
 
-```{r download arsenic data and clean}
+```{r download arsenic data and clean, eval=FALSE, include=FALSE}
 
 # Merge data to create one dataframe per year/NHANES cycle
 arsenic_1516 <- merge(uas_sp, uas_t, by = c("SEQN", "WTSA2YR"), all = TRUE)
@@ -1174,18 +1116,7 @@ glimpse(arsenic_1516)
 
 ```
 
-```{r survey weighting}
-
-arsenic.svy <- svydesign(ids = ~sdmvpsu, # cluster IDs
-                        strata = ~sdmvstra, # strata IDs
-                        weights = ~wtsa2yr, # individual weights, subsample descriptions and weights are found in the specific datafiles downloaded from NHANES website
-                        nest = TRUE,
-                        data = arsenic_1516) # call the dataframe 
-
-summary(arsenic.svy) 
-```
-
-```{r arsenic descriptive stats}
+```{r arsenic descriptive stats, eval=FALSE, include=FALSE}
 
 ## svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
 svyby(~urxuas, # continuous variable
@@ -1195,7 +1126,7 @@ svyby(~urxuas, # continuous variable
 
 ```
 
-```{r urinary arsenic graphs}
+```{r urinary arsenic graphs, eval=FALSE, include=FALSE}
 
 # first, some data manipulation
 # combine species into inorganic species and organic species
@@ -1204,7 +1135,7 @@ svyby(~urxuas, # continuous variable
 ```
 
 
-```{r chi squared test, eval=FALSE}
+```{r chi squared test, eval=FALSE, include=FALSE}
 
 # EXAMPLE CODE for chi-squared test
 # Hypertension variable does not exist in our nh1516_sub dataframe
