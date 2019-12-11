@@ -32,6 +32,7 @@ library(foreign) # This package allows us to open .XPT files
 library(labelled)
 library(knitr)
 library(kableExtra)
+library(moments)
 
 ```
 
@@ -165,9 +166,10 @@ nh1516_sub %>%
 # The analytes included in this dataset were measured for all examined participants aged 1-11 years, and in a one-half subsample of participants 12 years and older. For participants aged 1-11 years their WTSH2YR are equivalent to their MEC exam sample weights. These 1-11 years old participants have completed at least one physical exam component in the MEC; therefore, they all have an exam sample weight larger than “0,” regardless of their lab test results.
 
 # For participants 12 years and older, special sample weights were created for the subsample. These special weights accounted for the additional probability of selection into the subsample, as well as the additional nonresponse to these lab tests. Therefore, if a participant 12 years and older was selected as part of the one-half subsample, but did not provide a blood specimen, he/she would have the sample weight value assigned as “0” in his/her record. 
+
 # so would including someone with weight 0 make a difference?? Can I just exclude them?? 
 
-# drop rows missing the weight variable to arrive at the eligible  
+# drop rows missing the weight variable to arrive at the eligible subset
 nh1516_sub <- 
   nh1516_sub %>%  
   drop_na(wtsh2yr) %>%   
@@ -221,7 +223,7 @@ From our eligible subset, about 11% had missing values for blood metals Pb, Cd, 
 
 ### Inorganic, Ethyl, and Methyl Mercury: Missing Data
 
-```{r create separate dataset for speciated mercury}
+```{r create separate dataset for speciated mercury, include=FALSE}
 # assess missingness 
 
 # for ethyl Hg
@@ -257,7 +259,7 @@ The concentration of total Hg in urine is a biomarker of exposure primarily to e
 
 NHANES 2015/2016 collected information on Hg in urine. We will analyze this data from NHANES 2015/2016 as well.
 
-```{r create urinary mercury dataframe}
+```{r create urinary mercury dataframe, include=FALSE}
 
 # urinary Hg dataframe
 
@@ -301,7 +303,7 @@ Urinary mercury is eligible to be measured in all participants aged 3 to 5 years
 
 Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
 
-```{r remove NAs and 0 weights for urinary Hg }
+```{r remove NAs and 0 weights for urinary Hg, include=FALSE}
  
 # assess missingness of weights variable to see how many were eligible
 # those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
@@ -319,7 +321,7 @@ uhg1516_sub <-
 
 Of the 9,971 participants surveyed in 2015-2016, `r {nrow(uhg1516_sub)}` were eligible to have urine mercury measured.
 
-```{r drop missing mercury and creatinine}
+```{r drop missing mercury and creatinine, include=FALSE}
 
 # assess missing 
 uhg1516_sub %>%
@@ -352,7 +354,7 @@ uas1516 <- merge(uas1516, uas_sp, by = "SEQN", all = TRUE)
 uas1516 <- merge(uas1516, uas_t, by = "SEQN", all = TRUE)
 
 uas1516 <- uas1516 %>% 
-  mutate(WTSA2YR = WTSA2YR.x)
+  mutate(WTSA2YR = WTSA2YR.x) 
 
 # later, exclude those who have WTSA2YR as "NA"
 
@@ -372,7 +374,7 @@ uas1516_sub <-
          URXUCR, URXUAS3, URXUAS5, URXUAB, URXUAC, URXUDMA, URXUMMA, URXUAS) %>%
   janitor::clean_names() %>% 
   mutate(urxucr = urxucr*10000) %>% # convert creatinine from mg/dL to ug/L 
-  mutate(urxuas3 = urxuas3/urxucr,
+  mutate(urxuas3 = urxuas3/urxucr, # did I adjust correctly?? 
          urxuas5 = urxuas5/urxucr,
          urxuab = urxuab/urxucr,
          urxuac = urxuac/urxucr,
@@ -400,7 +402,7 @@ Urinary arsenic (total and speciated) is eligible to be measured in all particip
 
 Let's find how many people are missing the weighting value, indicating that they did not have their urinary mercury measured: 
 
-```{r remove NAs and 0 weights for urinary arsenic}
+```{r remove NAs and 0 weights for urinary arsenic, include=FALSE}
  
 # assess missingness of weights variable to see how many were eligible
 # those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
@@ -417,7 +419,7 @@ uas1516_sub <-
 
 Of the 9,971 participants surveyed in 2015-2016, `r {nrow(uas1516_sub)}` were eligible to have urine arsenic measured.
 
-```{r drop missing urinary arsenic and DMA}
+```{r drop missing urinary arsenic and DMA, include=FALSE}
  
 # assess missing 
 uas1516_sub %>%
@@ -455,7 +457,9 @@ In our data subsets, there are:
 
 * `r {nrow(uhg1516_sub)}` participants Hg measured in urine,
 
-* `r {nrow(uas1516_sub)}` participants with total and speciated arsenic measured in urine.
+* `r {nrow(uas1516_sub)}` participants with total and speciated arsenic measured in urine
+
+for our analyses.
 
 # Sample Weighting
 
@@ -518,7 +522,7 @@ summary(arsenic.svy)
 
 ```
 
-## Survey-Weighted Data Distribution
+## Survey-Weighted Data Distributions
 
 ### Data Distribution: Blood Metals
 
@@ -579,13 +583,67 @@ svyhist(~log(lbxbmn),
 ## Do I have to test these distributions for normality statistically?? 
 ```
 
+```{r blood metals skewness}
+# but this doesn't take into account the weighting....? or is the weighting only needed for statistical tests but not for assessments of normality? 
+
+# Pb skewness/kurtosis
+skewness(nh1516_sub$lbxbpb)
+kurtosis(nh1516_sub$lbxbpb)
+
+# Pb qqplot
+qqnorm(nh1516_sub$lbxbpb)
+qqline(nh1516_sub$lbxbpb)
+
+# log transformed Pb skewness/kurtosis
+skewness(log(nh1516_sub$lbxbpb))
+kurtosis(log(nh1516_sub$lbxbpb))
+
+# log transformed qqplot, Pb
+qqnorm(log(nh1516_sub$lbxbpb))
+qqline(log(nh1516_sub$lbxbpb))
+
+# Cd skewness/kurtosis
+skewness(nh1516_sub$lbxbcd)
+kurtosis(nh1516_sub$lbxbcd)
+
+# Cd qqplot
+qqnorm(nh1516_sub$lbxbcd)
+qqline(nh1516_sub$lbxbcd)
+
+# log transformed Cd skewness/kurtosis
+skewness(log(nh1516_sub$lbxbcd))
+kurtosis(log(nh1516_sub$lbxbcd))
+
+# log transformed qqplot, Cd
+qqnorm(log(nh1516_sub$lbxbcd))
+qqline(log(nh1516_sub$lbxbcd))
+
+# Mn skewness/kurtosis
+skewness(nh1516_sub$lbxbmn)
+kurtosis(nh1516_sub$lbxbmn)
+
+# Mn qqplot
+qqnorm(nh1516_sub$lbxbmn)
+qqline(nh1516_sub$lbxbmn)
+
+# log transformed Mn skewness/kurtosis
+skewness(log(nh1516_sub$lbxbmn))
+kurtosis(log(nh1516_sub$lbxbmn))
+
+# log transformed qqplot, Mn
+qqnorm(log(nh1516_sub$lbxbmn))
+qqline(log(nh1516_sub$lbxbmn))
+
+```
+
+
 ### Data Distribution: Inorganic, Ethyl, Methyl Mercury
 
 ```{r check distributions and describe impact of influential outliers speciated blood Hg}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
-# "svyhist" creates histograms accounting for survey weights
-
+# "svyhist" creates histograms accounting for survey weights 
+ 
 ## Inorganic Hg
 svyhist(~lbxihg,
         blood.hg.svy, 
@@ -618,11 +676,68 @@ svyhist(~lbxbgm,
 
 # meHg log transformed
 svyhist(~log(lbxbgm),
-        blood.hg.svy, 
+        blood.hg.svy,  
         main = "Survey weighted log(average blood MeHg)", col = "yellow")
 # still not quite normal.... 
 
 ```
+
+```{r speciated mercury skewness}
+
+# iHg skewness/kurtosis
+skewness(hg1516_sub$lbxihg)
+kurtosis(hg1516_sub$lbxihg)
+
+# iHg qqplot
+qqnorm(hg1516_sub$lbxihg)
+qqline(hg1516_sub$lbxihg)
+
+# log transformed iHg skewness/kurtosis
+skewness(log(hg1516_sub$lbxihg))
+kurtosis(log(hg1516_sub$lbxihg))
+
+# log transformed iHg qqplot
+qqnorm(log(hg1516_sub$lbxihg))
+qqline(log(hg1516_sub$lbxihg))
+
+####
+
+# ethyl Hg skewness/kurtosis
+skewness(hg1516_sub$lbxbge)
+kurtosis(hg1516_sub$lbxbge)
+
+# ethyl Hg qqplot
+qqnorm(hg1516_sub$lbxbge)
+qqline(hg1516_sub$lbxbge)
+
+# log transformed ethyl Hg skewness/kurtosis
+skewness(log(hg1516_sub$lbxbge))
+kurtosis(log(hg1516_sub$lbxbge))
+
+# log transformed ethyl Hg qqplot
+qqnorm(log(hg1516_sub$lbxbge))
+qqline(log(hg1516_sub$lbxbge))
+
+###
+
+# methyl Hg skewness/kurtosis
+skewness(hg1516_sub$lbxbgm)
+kurtosis(hg1516_sub$lbxbgm)
+
+# methyl Hg qqplot
+qqnorm(hg1516_sub$lbxbgm)
+qqline(hg1516_sub$lbxbgm)
+
+# log transformed methyl Hg skewness/kurtosis
+skewness(log(hg1516_sub$lbxbgm))
+kurtosis(log(hg1516_sub$lbxbgm))
+
+# log transformed methyl Hg qqplot
+qqnorm(log(hg1516_sub$lbxbgm))
+qqline(log(hg1516_sub$lbxbgm))
+
+```
+
 
 ### Data Distribution: Urinary Mercury
 
@@ -643,6 +758,35 @@ svyhist(~log(urxuhg_adj),
 # normal 
 
 ```
+
+```{r urinary mercury skewness}
+
+# urinary Hg, adjusted for creatinine
+skewness(uhg1516_sub$urxuhg_adj)
+kurtosis(uhg1516_sub$urxuhg_adj)
+
+# Pb qqplot
+qqnorm(uhg1516_sub$urxuhg_adj)
+qqline(uhg1516_sub$urxuhg_adj)
+
+# log(urinary Hg, adjusted for creatinine)
+skewness(log(uhg1516_sub$urxuhg_adj))
+kurtosis(log(uhg1516_sub$urxuhg_adj))
+
+# log transformed qqplot, Pb
+qqnorm(log(uhg1516_sub$urxuhg_adj))
+qqline(log(uhg1516_sub$urxuhg_adj))
+
+# log adjusted looks great! 
+
+```
+
+```{r}
+
+# assess if there are influential / extreme outliers
+
+```
+
 
 ### Data Distribution: Urinary Arsenic
 
@@ -674,6 +818,45 @@ svyhist(~log(urxudma),
 # normal 
 
 ```
+
+```{r urinary arsenic skewness}
+
+# adjusted arsenic
+skewness(uas1516_sub$urxuas)
+kurtosis(uas1516_sub$urxuas)
+
+qqnorm(uas1516_sub$urxuas)
+qqline(uas1516_sub$urxuas)
+
+# log(adjusted arsenic)
+skewness(log(uas1516_sub$urxuas))
+kurtosis(log(uas1516_sub$urxuas))
+
+qqnorm(log(uas1516_sub$urxuas))
+qqline(log(uas1516_sub$urxuas))
+
+# log looks much better! still some extremes at the tails though 
+
+###
+
+# adjusted DMA
+skewness(uas1516_sub$urxudma)
+kurtosis(uas1516_sub$urxudma)
+
+qqnorm(uas1516_sub$urxudma)
+qqline(uas1516_sub$urxudma)
+
+# log(adjusted DMA)
+skewness(log(uas1516_sub$urxudma))
+kurtosis(log(uas1516_sub$urxudma))
+
+qqnorm(log(uas1516_sub$urxudma))
+qqline(log(uas1516_sub$urxudma))
+
+# looks much better! 
+
+```
+
 
 ## Descriptive Statistics
 
