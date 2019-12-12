@@ -1021,6 +1021,8 @@ pb_sex_means %>%
 
 ### Blood Cd
 
+Is the log(Cd) distribution normal enough for t-test? 
+
 ```{r blood Cd only}
 
 # Count number of males and females in this dataset
@@ -1037,7 +1039,7 @@ cd_log_mean <-
   svymean(~log(lbxbcd), # ok to use log, or log10?? ASK 
           blood.svy) 
 
-## Geometric mean, overall blood Pb 
+## Geometric mean, overall blood Cd 
 exp(cd_log_mean)[1]
 
 ## 95% Confidence Intervals
@@ -1073,6 +1075,64 @@ tt_lbxbcd <-
            blood.svy)
 
 tt_lbxbcd
+# p-value = 1.774e-05, so the difference in mean blood Cd levels across males and females is significant
+ 
+```
+
+### Blood Mn 
+
+```{r blood Mn only}
+
+# Count number of males and females in this dataset
+table(nh1516_sub$sex)
+100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
+#           mean     SE
+# sexMale   48.802 0.0104
+# sexFemale 51.198 0.0104
+
+### OVERALL
+
+# overall population geometric mean and 95% CI
+mn_log_mean <-
+  svymean(~log(lbxbmn), 
+          blood.svy) 
+
+## Geometric mean, overall blood Mn
+exp(mn_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(mn_log_mean[1] - 1.96 * sqrt(attr(mn_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(mn_log_mean[1] + 1.96 * sqrt(attr(mn_log_mean, "var")))
+
+### BY SEX 
+
+# Mn by sex
+svyby(~log(lbxbmn),
+      by = ~sex,
+      blood.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(2.196282) # 8.991521 ug/L, geometric mean for males
+exp(2.196282 - (1.96 * 0.01337830)) # lower 95% CI
+exp(2.196282 + (1.96 * 0.01337830)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(2.322047) # 10.19653 ug/L, geometric mean for females
+exp(2.322047 - (1.96 * 0.01144469)) # lower 95% CI
+exp(2.322047 + (1.96 * 0.01144469)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_lbxbmn <-
+  svyttest(log(lbxbmn)~sex,
+           blood.svy)
+
+tt_lbxbmn
 # p-value = 1.774e-05, so the difference in mean blood Cd levels across males and females is significant
 
 ```
