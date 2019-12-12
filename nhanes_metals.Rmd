@@ -946,8 +946,11 @@ The log-transformed data looks better for Pb, Mn, as well as urinary Hg, total A
 # Count number of males and females in this dataset
 table(nh1516_sub$sex)
 100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
+#           mean     SE
+# sexMale   48.802 0.0104
+# sexFemale 51.198 0.0104
 
-# overall population geometric mean and 95% CI
+# overall population geometric mean Pb and 95% CI
 pb_log_mean <-
   svymean(~log(lbxbpb),
           blood.svy) 
@@ -992,7 +995,6 @@ tt_lbxbpb <-
 tt_lbxbpb
 # p-value = 2.58e-05, so the difference in mean blood Pb levels across males and females is significant
 
-
 ```
 
 Graph the results:
@@ -1017,11 +1019,9 @@ pb_sex_means %>%
 
 ```
 
+### Blood Cd
 
-### Blood Pb, Cd, Mn
-#### Overall Population
-
-```{r blood Pb, Cd, Mn overall pop}
+```{r blood Cd only}
 
 # Count number of males and females in this dataset
 table(nh1516_sub$sex)
@@ -1030,16 +1030,67 @@ table(nh1516_sub$sex)
 # sexMale   48.802 0.0104
 # sexFemale 51.198 0.0104
 
+### OVERALL
+
+# overall population geometric mean and 95% CI
+cd_log_mean <-
+  svymean(~log(lbxbcd), # ok to use log, or log10?? ASK 
+          blood.svy) 
+
+## Geometric mean, overall blood Pb 
+exp(cd_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(cd_log_mean[1] - 1.96 * sqrt(attr(cd_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(cd_log_mean[1] + 1.96 * sqrt(attr(cd_log_mean, "var")))
+
+### BY SEX 
+
+# Cd by sex
+svyby(~log(lbxbcd),
+      by = ~sex,
+      blood.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(-1.537352) # 0.2149495 ug/L, geometric mean for males
+exp(-1.537352 - (1.96 * 0.03148460)) # lower 95% CI
+exp(-1.537352 + (1.96 * 0.03148460)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(-1.337665) # 0.2624578 ug/L, geometric mean for females
+exp(-1.337665 - (1.96 * 0.03405788)) # lower 95% CI
+exp(-1.337665 + (1.96 * 0.03405788)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_lbxbcd <-
+  svyttest(log(lbxbcd)~sex,
+           blood.svy)
+
+tt_lbxbcd
+# p-value = 1.774e-05, so the difference in mean blood Cd levels across males and females is significant
+
+```
+
+
+#### Overall Population
+
+```{r blood Pb, Cd, Mn overall pop}
+
+
+
 ## svymean: Computes means and SEs for survey data
 
 # Example, we compute the means of multiple variables:
 svymean(~log(lbxbpb)+log10(lbxbcd)+log(lbxbmn), # continuous variable(s)
         blood.svy) # the ”svydesign” object
 
-
-
 # put results into a table
-mean_metals_table <-
   svymean(~log(lbxbpb)+log10(lbxbcd)+log(lbxbmn),
                blood.svy) %>% 
   kable() %>% 
@@ -1050,7 +1101,6 @@ mean_metals_table <-
 
 ```
 
-print(mean_metals_table)
 
 #### Across Sexes
 
