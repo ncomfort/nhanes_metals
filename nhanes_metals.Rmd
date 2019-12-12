@@ -526,7 +526,7 @@ summary(arsenic.svy)
 
 ### Data Distribution: Blood Metals
 
-```{r check distributions and describe impact of influential outliers blood metal}
+```{r blood metals check distributions}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 # "svyhist" creates histograms accounting for survey weights
@@ -553,6 +553,10 @@ svyhist(~lbxbcd,
 svyhist(~log(lbxbcd),
         blood.svy,
         main = "Survey weighted log(average blood Cd)", col = "red")
+
+svyhist(~log10(lbxbcd),
+        blood.svy,
+        main = "Survey weighted log10(Cd)")
 
 ## log-transformed Cd still not quite normal??? 
 
@@ -589,7 +593,6 @@ svyhist(~log(lbxbmn),
 # Pb skewness/kurtosis
 skewness(nh1516_sub$lbxbpb)
 kurtosis(nh1516_sub$lbxbpb)
-
 # Pb qqplot
 qqnorm(nh1516_sub$lbxbpb)
 qqline(nh1516_sub$lbxbpb)
@@ -597,15 +600,15 @@ qqline(nh1516_sub$lbxbpb)
 # log transformed Pb skewness/kurtosis
 skewness(log(nh1516_sub$lbxbpb))
 kurtosis(log(nh1516_sub$lbxbpb))
-
 # log transformed qqplot, Pb
 qqnorm(log(nh1516_sub$lbxbpb))
 qqline(log(nh1516_sub$lbxbpb))
 
+###
+
 # Cd skewness/kurtosis
 skewness(nh1516_sub$lbxbcd)
 kurtosis(nh1516_sub$lbxbcd)
-
 # Cd qqplot
 qqnorm(nh1516_sub$lbxbcd)
 qqline(nh1516_sub$lbxbcd)
@@ -613,15 +616,23 @@ qqline(nh1516_sub$lbxbcd)
 # log transformed Cd skewness/kurtosis
 skewness(log(nh1516_sub$lbxbcd))
 kurtosis(log(nh1516_sub$lbxbcd))
-
 # log transformed qqplot, Cd
 qqnorm(log(nh1516_sub$lbxbcd))
 qqline(log(nh1516_sub$lbxbcd))
 
+# log 10 transformed Cd
+skewness(log10(nh1516_sub$lbxbcd))
+kurtosis(log10(nh1516_sub$lbxbcd))
+# log 10 transformed qqplot
+qqnorm(log10(nh1516_sub$lbxbcd))
+qqline(log10(nh1516_sub$lbxbcd))
+# doesn't change the qqplot except for scale
+
+###
+
 # Mn skewness/kurtosis
 skewness(nh1516_sub$lbxbmn)
 kurtosis(nh1516_sub$lbxbmn)
-
 # Mn qqplot
 qqnorm(nh1516_sub$lbxbmn)
 qqline(nh1516_sub$lbxbmn)
@@ -629,17 +640,41 @@ qqline(nh1516_sub$lbxbmn)
 # log transformed Mn skewness/kurtosis
 skewness(log(nh1516_sub$lbxbmn))
 kurtosis(log(nh1516_sub$lbxbmn))
-
 # log transformed qqplot, Mn
 qqnorm(log(nh1516_sub$lbxbmn))
 qqline(log(nh1516_sub$lbxbmn))
 
 ```
 
+```{r blood metals check impact of influential outliers}
+
+# plot the survey weight against the variable to determine which extreme values are outliers
+nh1516_sub %>% 
+  ggplot(aes(x = log(lbxbpb), y = wtsh2yr)) +
+  geom_point()
+
+#nh1516_sub %>% 
+#  ggplot(aes(x = wtsh2yr, y = log(lbxbpb))) +
+#  geom_point()
+
+# what should this plot look like?? 
+
+# Cd
+nh1516_sub %>% 
+  ggplot(aes(x = log(lbxbcd), y = wtsh2yr)) +
+  geom_point()
+
+# Mn
+nh1516_sub %>% 
+  ggplot(aes(x = log(lbxbmn), y = wtsh2yr)) +
+  geom_point()
+# maybe 3 outliers? 
+
+```
 
 ### Data Distribution: Inorganic, Ethyl, Methyl Mercury
 
-```{r check distributions and describe impact of influential outliers speciated blood Hg}
+```{r speciated blood Hg check distributions}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 # "svyhist" creates histograms accounting for survey weights 
@@ -682,7 +717,7 @@ svyhist(~log(lbxbgm),
 
 ```
 
-```{r speciated mercury skewness}
+```{r speciated blood Hg skewness}
 
 # iHg skewness/kurtosis
 skewness(hg1516_sub$lbxihg)
@@ -738,10 +773,31 @@ qqline(log(hg1516_sub$lbxbgm))
 
 ```
 
+```{r speciated blood Hg check impact of influential outliers}
+
+
+# plot the survey weight against the variable to determine which extreme values are outliers
+hg1516_sub %>% 
+  ggplot(aes(x = log(lbxihg), y = wtsh2yr)) +
+  geom_point()
+
+hg1516_sub %>% 
+  ggplot(aes(x = log(lbxbge), y = wtsh2yr)) +
+  geom_point()
+
+hg1516_sub %>% 
+  ggplot(aes(x = log(lbxbgm), y = wtsh2yr)) +
+  geom_point()
+
+# what should this plot look like?? 
+# should I be concerned about outliers, because it looks like those with very high blood Pb have lower weights
+
+
+```
 
 ### Data Distribution: Urinary Mercury
 
-```{r check distributions and describe impact of influential outliers urinary Hg}
+```{r urinary Hg check distributions}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 
@@ -759,7 +815,7 @@ svyhist(~log(urxuhg_adj),
 
 ```
 
-```{r urinary mercury skewness}
+```{r urinary Hg skewness}
 
 # urinary Hg, adjusted for creatinine
 skewness(uhg1516_sub$urxuhg_adj)
@@ -781,16 +837,20 @@ qqline(log(uhg1516_sub$urxuhg_adj))
 
 ```
 
-```{r}
+```{r urinary Hg describe impact of influential outliers}
 
 # assess if there are influential / extreme outliers
 
-```
+uhg1516_sub %>% 
+  ggplot(aes(x = log(urxuhg_adj), y = wtsa2yr)) +
+  geom_point()
+# maybe one outlier... 
 
+```
 
 ### Data Distribution: Urinary Arsenic
 
-```{r check distributions and describe impact of influential outliers urinary As}
+```{r urinary As check distributions}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 
@@ -819,7 +879,7 @@ svyhist(~log(urxudma),
 
 ```
 
-```{r urinary arsenic skewness}
+```{r urinary As skewness}
 
 # adjusted arsenic
 skewness(uas1516_sub$urxuas)
@@ -857,30 +917,214 @@ qqline(log(uas1516_sub$urxudma))
 
 ```
 
+```{r urinary As describe impact of influential outliers}
+
+# total As 
+uas1516_sub %>% 
+  ggplot(aes(x = log(urxuas), y = wtsa2yr)) +
+  geom_point()
+
+# DMA
+uas1516_sub %>% 
+  ggplot(aes(x = log(urxudma), y = wtsa2yr)) +
+  geom_point()
+
+# both look ok
+
+```
 
 ## Descriptive Statistics
 
-Find the mean levels and SE of Pb, Cd, Hg (inorganic and organic), and Mn in the US population (accounting for survey weights and design). 
+The log-transformed data looks better for Pb, Mn, as well as urinary Hg, total As, and DMA. **Thus, for these variables, we will use the log-transformed average for statistical tests, such as models and using the svyby function.** 
 
-```{r example descriptive stats using survey functions, eval=FALSE, include=FALSE}
+### Blood Pb
 
-# useful survey functions: 
+```{r blood Pb only}
+
+### OVERALL 
+
+# Count number of males and females in this dataset
+table(nh1516_sub$sex)
+100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
+
+# overall population geometric mean and 95% CI
+pb_log_mean <-
+  svymean(~log(lbxbpb),
+          blood.svy) 
+
+## Geometric mean, overall blood Pb 
+exp(pb_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(pb_log_mean[1] - 1.96 * sqrt(attr(pb_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(pb_log_mean[1] + 1.96 * sqrt(attr(pb_log_mean, "var")))
+
+### BY SEX
+
+# svyby is the function that will compute summary statistics of continuous variables within your "svydesign", across a cateogrical variable. In this case, we want average log transformed blood metal values separately for males and females. We specify "svymean" at the end of the command line to tell the command that we want the average means.
+
+# Pb by sex
+svyby(~log(lbxbpb),
+      by = ~sex,
+      blood.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(-0.0825263) # 0.9207872 ug/dL, geometric mean for males
+exp(-0.0825263 - (1.96 * 0.02973103)) # lower 95% CI
+exp(-0.0825263 + (1.96 * 0.02973103)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(-0.3077383) # 0.7351077 ug/dL, geometric mean for females
+exp(-0.3077383 - (1.96 * 0.03711817)) # lower 95% CI
+exp(-0.3077383 + (1.96 * 0.03711817)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_lbxbpb <-
+  svyttest(log(lbxbpb)~sex,
+           blood.svy)
+
+tt_lbxbpb
+# p-value = 2.58e-05, so the difference in mean blood Pb levels across males and females is significant
+
+
+```
+
+Graph the results:
+
+```{r plot difference in blood Pb by sex}
+
+pb_sex_means <- read.csv("pb_sex_means.csv")
+
+pb_sex_means %>% 
+  ggplot(aes(x = Sex, 
+             y = geo_mean,
+             fill = Sex)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = lower, # change for different metalas
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.9)) +
+  labs(title="Levels of Blood Pb in Males vs Females", # edit labels for diff graphs
+       x = "Sex",
+       y = "Blood Pb (ug/dL)",
+       caption = "NHANES 2015/2016 data") 
+
+```
+
+
+### Blood Pb, Cd, Mn
+#### Overall Population
+
+```{r blood Pb, Cd, Mn overall pop}
+
+# Count number of males and females in this dataset
+table(nh1516_sub$sex)
+100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
+#           mean     SE
+# sexMale   48.802 0.0104
+# sexFemale 51.198 0.0104
 
 ## svymean: Computes means and SEs for survey data
-svymean(~lbxbpb, # continuous variable(s)
-        nhanes.svy) # the ”svydesign” object
 
 # Example, we compute the means of multiple variables:
-svymean(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, 
-        nhanes.svy)
+svymean(~log(lbxbpb)+log10(lbxbcd)+log(lbxbmn), # continuous variable(s)
+        blood.svy) # the ”svydesign” object
+
+
 
 # put results into a table
 mean_metals_table <-
-  svymean(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, nhanes.svy) %>% 
+  svymean(~log(lbxbpb)+log10(lbxbcd)+log(lbxbmn),
+               blood.svy) %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"),
                 full_width = F) 
 # note that lbxbpb is in the units ug/dL whereas the others are in ug/L
+# exponentiate these values to get the geometric means
+
+```
+
+print(mean_metals_table)
+
+#### Across Sexes
+
+Find the geometric mean for males and females and determine if the difference is statistically significant. 
+
+```{r blood Pb, Cd, Mn by sex}
+
+```
+
+
+### Speciated Blood Hg
+#### Overall Population
+
+```{r speciated blood Hg overall pop}
+# Count number of males and females in this dataset
+table(hg1516_sub$sex)
+100*(svymean(~sex, blood.hg.svy)) # weighted percentage of individuals by sex
+#            mean     SE
+# sexMale   48.748 0.0104
+# sexFemale 51.252 0.0104
+```
+
+#### Across Sexes
+
+```{r speciated blood Hg by sex}
+
+```
+
+
+### Urinary Hg
+#### Overall Population
+
+```{r urinary Hg overall pop}
+# Count number of males and females in this dataset
+table(uhg1516_sub$sex)
+100*(svymean(~sex, urine.hg.svy)) # weighted percentage of individuals by sex
+#           mean     SE
+# sexMale   48.82 0.0142
+# sexFemale 51.18 0.0142
+
+```
+
+#### Across Sexes
+
+```{r urinary Hg by sex}
+
+```
+
+### Urinary Total As and DMA
+#### Overall Population
+
+```{r urinary As overall pop}
+# Count number of males and females in this dataset
+table(uas1516_sub$sex)
+100*(svymean(~sex, arsenic.svy)) # weighted percentage of individuals by sex
+#            mean     SE
+# sexMale   48.851 0.0143
+# sexFemale 51.149 0.0143
+
+```
+
+#### Across Sexes
+
+```{r urinary As by sex}
+
+```
+
+
+Find the mean levels of Pb, Cd, Hg (inorganic and organic), and Mn in the US population (accounting for survey weights and design). 
+
+
+```{r descriptive stats using survey functions, eval=FALSE, include=FALSE}
+
+
 
 ##############################################################
 ## By Sex
@@ -901,19 +1145,6 @@ sex_mean_metals_table <-
   kable_styling(bootstrap_options = c("striped", "hover"),
                 full_width = F) 
 
-##############################################################
-
-# Other useful functions: 
-
-## svyhist: Survey-weighted histograms
- 
-## svyquantile: Computes quantiles for survey data (you can choose the quantile values)
-svyquantile(~lbxbpb, # continuous variable  
-            nhanes.svy, # the ”svydesign” object  
-            c(0.10, 0.90), # list of percentiles 
-            ci = F)
-
-## svychisq: Contingency table and chi-squared tests for survey data; weighted cross tabulations
  
 ```
 
@@ -1040,19 +1271,6 @@ Are these differences seen across sex and age group significant?
 ```{r}
 # use ANOVA because I am comparing the mean of a continuous variable across two categorical variables (sex and age group)
 ## or, why categorize it, but first see if it is significant by sex and age, then categorize age to make graphing easier
-
-```
-
-```{r boxplots from original data, eval=FALSE, include=FALSE}
-
-# for Pb
-nh1516_sub %>% 
-  ggplot(aes(x = sex,
-             y = lbxbpb)) +
-  geom_boxplot()
-
-## boxplot doesn't look good because there are too many outliers,
-## probably because NHANES oversamples specific populations, so the original data are going to be non-representative/biased. go with the survey weighted means
 
 ```
 
@@ -1318,10 +1536,32 @@ svyby(~urxuas, # continuous variable
 ```
 
 
-```{r chi squared test, eval=FALSE, include=FALSE}
+```{r examples, eval=FALSE, include=FALSE}
 
+# Useful svy functions: 
+#  svydesign: Defines the survey design for your dataset. This is the foundation of the package! 
+#  svymean: Computes means and SEs for survey data
+#  svyhist: Survey-weighted histograms (ugly, but functional...)
+#  svyquantile: Computes quantiles for survey data (you can choose the quantile values)
+#  svychisq: Contingency table and chi-squared tests for survey data; weighted cross tabulations
+#  svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
+#  svyglm: General linear models for survey data (simliar to 'glm')
+#  svyttest: T-tests
+
+## svyhist: Survey-weighted histograms
+ 
+## svyquantile: Computes quantiles for survey data (you can choose the quantile values)
+# EXAMPLE: 
+svyquantile(~lbxbpb, # continuous variable  
+            nhanes.svy, # the ”svydesign” object
+            c(0.10, 0.90), # list of percentiles
+            ci = F)
+
+############################
+
+## svychisq: Contingency table and chi-squared tests for survey data; weighted cross tabulations
 # EXAMPLE CODE for chi-squared test
-# Hypertension variable does not exist in our nh1516_sub dataframe
+# Note: Hypertension variable does not exist in our nh1516_sub dataframe
 
 # We are comparing a binary variable (hypertension status) across a categorical variable, so let's use a chi-squared test. We can get the raw numbers from a simple table.
 nhanes.svy <-
@@ -1337,10 +1577,11 @@ table(nh1516_sub$htn,
 
 svychisq(~htn+sex,
          nhanes.svy,
-         statistic="adjWald")
+         statistic="adjWald") 
+
+############################
 
 ```
-
 
 
 
