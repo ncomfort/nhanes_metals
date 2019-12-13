@@ -101,7 +101,7 @@ creatinine <- read.xport("ALB_CR_I.XPT") %>%
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/ALB_CR_I.htm
 ### Eligible Sample: Examined participants aged 3 years and older were eligible.
 
-```
+``` 
 
 ## Blood Metals: Subset Data Cleaning and Evaluation
 
@@ -129,6 +129,8 @@ nh1516_sub <-
   select(SEQN, SDDSRVYR, # unique identifier and survey year 
          RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
          WTMEC2YR, SDMVPSU, SDMVSTRA, WTSH2YR, # weighting info
+         LBDBPBLC, LBDBCDLC, LBDTHGLC, LBDBMNLC,  # comment codes for blood metals LOD 
+         LBDIHGLC, LBDBGELC, LBDBGMLC, # blood Hg comment codes for LOD
          LBXBPB, LBXBCD, LBXBMN, LBXTHG, LBXIHG, LBXBGE, LBXBGM) %>% # metals (exclude selenium for now)
   janitor::clean_names() %>% 
   mutate(lbxohg = lbxthg - lbxihg) %>% # create new variable for organic mercury (total Hg - inorganic Hg)
@@ -146,6 +148,8 @@ nh1516_sub <-
 
 
 # Note to self: why are some organic mercury values (the variable I created) negative?? 
+# PROBABLY BECAUSE THERE ARE A LOT OF IMPUTED VALUES SO THEY DON'T ADD UP 
+
 # later, plot mercury broken down as organic and inorganic, but also try breaking down organic to ethyl and methyl
 # or Annie's recommendation was just to plot total and methyl?  
 ```
@@ -178,6 +182,29 @@ nh1516_sub <-
 ```
 
 Of the 9,971 participants surveyed in 2015-2016, `r {nrow(nh1516_sub)}` were eligible to have blood metals measured.
+
+Check the percentage of imputed values for blood Pb, Cd, Mn, and total Hg:
+
+```{r blood metals below LOD}
+
+# The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
+
+# For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]). 
+
+nh1516_sub %>% 
+  count(lbdbpblc == 1) # only 5 imputed values for Pb, < 1% imputed 
+
+nh1516_sub %>% 
+  count(lbdbcdlc == 1) # ouch, 23% < LOD for Cd, that's 34% if I include the 609 that have comment code "NA" 
+
+nh1516_sub %>% 
+  count(lbdthglc == 1) # same as for Cd, ~23% < LOD for total Hg
+
+nh1516_sub %>% 
+  count(lbdbmnlc == 1) # 610 NA but otherwise no imputed values for Mn 
+
+```
+
 
 ### Blood Metals: Missing Data
 
@@ -251,6 +278,25 @@ hg1516_sub <-
 
 Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for blood mercury. After retaining only complete cases, we are left with `r {nrow(hg1516_sub)}` participants for mercury analysis. 
 
+```{r speciated mercury < LOD}
+
+# The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
+
+# For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]). 
+
+nh1516_sub %>% 
+  count(lbdihglc == 1) # for iHg, 75% of values are imputed (not including NAs)
+
+nh1516_sub %>% 
+  count(lbdbgelc == 1) # for ethyl Hg, 87% of values are imputed (not including NAs) 
+
+nh1516_sub %>% 
+  count(lbdbgmlc == 1) # for methyl Hg, 24% of values are imputed (not including NAs)
+
+
+```
+
+
 ## Urinary Mercury: Subset Data Cleaning and Evaluation
 
 *As we can see, there was much higher concentrations of organic Hg than inorganic Hg for Hg measured in blood (double-check)*
@@ -261,23 +307,24 @@ NHANES 2015/2016 collected information on Hg in urine. We will analyze this data
 
 ```{r create urinary mercury dataframe, include=FALSE}
 
-# urinary Hg dataframe
+# urinary Hg dataframe 
 
 # Merge data to create one dataframe per year; then keep only the necessary variables: 
-uhg1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE) 
+uhg1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)  
 uhg1516 <- merge(uhg1516, creatinine, by = "SEQN", all = TRUE) 
 # later, exclude those who have WTSA2YR as "NA"
-
+ 
 ## Here is a list of variables we will need for our analysis:
 # SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA
 # WTSA2YR (NEW WEIGHTING VARIABLE)
 # URXUHG (urine mercury, ng/mL), URXUCR (creatinine, mg/dL)
-
+ 
 # Data Cleaning to Create Urinary Hg Data Subset: 
 uhg1516_sub <-
   uhg1516 %>%
   select(SEQN, SDDSRVYR, # unique identifier and survey year 
          RIAGENDR, RIDAGEYR, RIDRETH1, # gender, age, race/ethnicity
+         URDUHGLC, # urine comment code 
          WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, # weighting info
          URXUHG, URXUCR) %>% # metals (exclude selenium for now)
   janitor::clean_names() %>% 
@@ -342,35 +389,54 @@ uhg1516_sub <-
 
 Furthermore, out of those eligible, about 4.6% were missing values for urinary mercury. After dropping those with values missing for urinary mercury and/or creatinine (needed for adjustment), we have `r {nrow(uhg1516_sub)}` participants remaining for analysis. 
 
+```{r urinary Hg assess LODs}
+
+# The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
+
+# For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]). 
+
+uhg1516_sub %>% 
+  count(urduhglc == 1) # for urinary Hg, 58% of values are < LOD 
+
+```
+
+
 ## Urinary Arsenic: Subset Data Cleaning and Evaluation
 
 ```{r create urinary arsenic dataframe}
 
-# Urinary arsenic dataframe
+# Urinary arsenic dataframe 
 
 # Merge data to create one dataframe per year; then keep only the necessary variables:
 uas1516 <- merge(demo1516, creatinine, by = "SEQN", all = TRUE)
-uas1516 <- merge(uas1516, uas_sp, by = "SEQN", all = TRUE)
+uas1516 <- merge(uas1516, uas_sp, by = "SEQN", all = TRUE) 
 uas1516 <- merge(uas1516, uas_t, by = "SEQN", all = TRUE)
-
+ 
 uas1516 <- uas1516 %>% 
   mutate(WTSA2YR = WTSA2YR.x) 
-
+ 
 # later, exclude those who have WTSA2YR as "NA"
+
+# Note that the total arsenic file, uas_t, did not have a comment code. 
+# The LOD for total urinary arsenic is 0.26 ug/L, so let's just count how many participants have values < 0.26
+
+uas1516 %>% 
+  count(URXUAS < 0.26) # only two people have imputed values, so no need to worry! 
 
 ## Here is a list of variables we will need for our analysis:
 # SEQN, SDDSRVYR, RIAGENDR, RIDAGEYR, RIDRETH1, WTMEC2YR, SDMVPSU, SDMVSTRA
 # WTSA2YR (NEW WEIGHTING VARIABLE)
-# URXUCR (creatinine, mg/dL)
+# URXUCR (creatinine, mg/dL) 
 # URXUAS3, URXUAS5, URXUAB, URXUAC, URXUDMA, URXUMMA (all in ug/L)
 # URXUAS (total urine arsenic, ug/L)
-
+ 
 # Data Cleaning to Create Urinary Hg Data Subset: 
 uas1516_sub <-
   uas1516 %>%
   select(SEQN, SDDSRVYR, 
          RIAGENDR, RIDAGEYR, RIDRETH1, 
          WTMEC2YR, SDMVPSU, SDMVSTRA, WTSA2YR, 
+         URDUA3LC, URDUA5LC, URDUABLC, URDUACLC, URDUDALC, URDUMMAL, # comment codes
          URXUCR, URXUAS3, URXUAS5, URXUAB, URXUAC, URXUDMA, URXUMMA, URXUAS) %>%
   janitor::clean_names() %>% 
   mutate(urxucr = urxucr*10000) %>% # convert creatinine from mg/dL to ug/L 
@@ -442,6 +508,33 @@ uas1516_sub <-
   drop_na(urxudma)
 
 ```
+
+```{r speciated arsenic < LOD}
+
+# The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
+
+# For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]). 
+
+uas1516_sub %>% 
+  count(urdua3lc == 1) # 47% < LOD for arsenous acid
+
+uas1516_sub %>% 
+  count(urdua5lc == 1) # 97% < LOD for arsenic acid
+
+uas1516_sub %>% 
+  count(urduablc == 1) # 60% < LOD for arsenobetaine
+
+uas1516_sub %>% 
+  count(urduaclc == 1) # 83% < LOD for arsenocholine 
+
+uas1516_sub %>% 
+  count(urdudalc == 1) # 29% < LOD for dimethylarsinic acid (DMA)
+
+uas1516_sub %>% 
+  count(urdummal == 1) # 44% < LOD for monomethylarsonic acid (MMA)
+
+```
+
 
 Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r {nrow(uas1516_sub)}` participants remaining for analysis. 
 
@@ -937,6 +1030,8 @@ uas1516_sub %>%
 
 The log-transformed data looks better for Pb, Mn, as well as urinary Hg, total As, and DMA. **Thus, for these variables, we will use the log-transformed average for statistical tests, such as models and using the svyby function.** 
 
+Below are the geometric mean levels (and 95% CIs) of blood Pb, Cd, Mn, and Hg (total and meHg), as well as urinary Hg levels and total As and DMA in the US population (accounting for survey weights and design):
+
 ### Blood Pb
 
 ```{r blood Pb only}
@@ -994,6 +1089,8 @@ tt_lbxbpb <-
 
 tt_lbxbpb
 # p-value = 2.58e-05, so the difference in mean blood Pb levels across males and females is significant
+
+# note that lbxbpb is in the units ug/dL whereas the other blood metals are in ug/L
 
 ```
 
@@ -1134,66 +1231,170 @@ tt_lbxbmn <-
 
 tt_lbxbmn
 # p-value = 1.774e-05, so the difference in mean blood Cd levels across males and females is significant
-
-```
-
-
-#### Overall Population
-
-```{r blood Pb, Cd, Mn overall pop}
-
-
-
-## svymean: Computes means and SEs for survey data
-
-# Example, we compute the means of multiple variables:
-svymean(~log(lbxbpb)+log10(lbxbcd)+log(lbxbmn), # continuous variable(s)
-        blood.svy) # the ”svydesign” object
-
-# put results into a table
-  svymean(~log(lbxbpb)+log10(lbxbcd)+log(lbxbmn),
-               blood.svy) %>% 
-  kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"),
-                full_width = F) 
-# note that lbxbpb is in the units ug/dL whereas the others are in ug/L
-# exponentiate these values to get the geometric means
-
-```
-
-
-#### Across Sexes
-
-Find the geometric mean for males and females and determine if the difference is statistically significant. 
-
-```{r blood Pb, Cd, Mn by sex}
-
+ 
 ```
 
 
 ### Speciated Blood Hg
-#### Overall Population
 
-```{r speciated blood Hg overall pop}
+Oddly, the levels of inorganic, ethyl, and methyl mercury in the NHANES dataset ` r IHGEM_I.XPT` do not sum to the value of total mercury in the `r PBCD_I.XPT` NHANES dataset. Thus, I am only going to analyze methyl mercury and total mercury. 
+
+**Is the log transformation ok for total Hg and meHg?** 
+
+#### Total Hg
+
+```{r total blood Hg}
+
+### OVERALL 
+
 # Count number of males and females in this dataset
 table(hg1516_sub$sex)
 100*(svymean(~sex, blood.hg.svy)) # weighted percentage of individuals by sex
 #            mean     SE
 # sexMale   48.748 0.0104
 # sexFemale 51.252 0.0104
+
+# overall population geometric mean and 95% CI
+total_hg_log_mean <-
+  svymean(~log(lbxthg), 
+          blood.hg.svy) 
+
+## Geometric mean, total blood Hg
+exp(total_hg_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(total_hg_log_mean[1] - 1.96 * sqrt(attr(total_hg_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(total_hg_log_mean[1] + 1.96 * sqrt(attr(total_hg_log_mean, "var")))
+
+### BY SEX
+
+# total Hg by sex
+svyby(~log(lbxthg),
+      by = ~sex,
+      blood.hg.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(-0.3880978) # 0.678346 ug/L, geometric mean for males
+exp(-0.3880978 - (1.96 * 0.04220394)) # lower 95% CI
+exp(-0.3880978 + (1.96 * 0.04220394)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(-0.3880060) # 0.6784083 ug/L, geometric mean for females
+exp(-0.3880060 - (1.96 * 0.05025774)) # lower 95% CI
+exp(-0.3880060 + (1.96 * 0.05025774)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_lbxthg <-
+  svyttest(log(lbxthg)~sex,
+           blood.hg.svy)
+
+tt_lbxthg
+# p-value = 0.998, so the difference in mean blood total Hg levels across males and females is NOT significant
+
 ```
 
-#### Across Sexes
+#### Methyl Mercury
 
-```{r speciated blood Hg by sex}
+```{r blood methyl Hg}
+
+### OVERALL 
+
+# Count number of males and females in this dataset
+table(hg1516_sub$sex)
+100*(svymean(~sex, blood.hg.svy)) # weighted percentage of individuals by sex
+#            mean     SE
+# sexMale   48.748 0.0104
+# sexFemale 51.252 0.0104
+
+# overall population geometric mean and 95% CI
+mehg_log_mean <-
+  svymean(~log(lbxbgm), 
+          blood.hg.svy) 
+
+## Geometric mean, meHg
+exp(mehg_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(mehg_log_mean[1] - 1.96 * sqrt(attr(mehg_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(mehg_log_mean[1] + 1.96 * sqrt(attr(mehg_log_mean, "var")))
+
+### BY SEX
+
+# meHg by sex
+svyby(~log(lbxbgm),
+      by = ~sex,
+      blood.hg.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(-0.8482905) # 0.4281462 ug/L, geometric mean for males
+exp(-0.8482905 - (1.96 * 0.05858514)) # lower 95% CI
+exp(-0.8482905 + (1.96 * 0.05858514)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(-0.9186819) # 0.3990447 ug/L, geometric mean for females
+exp(-0.9186819 - (1.96 * 0.07721073)) # lower 95% CI
+exp(-0.9186819 + (1.96 * 0.07721073)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_lbxbgm <-
+  svyttest(log(lbxbgm)~sex,
+           blood.hg.svy)
+
+tt_lbxbgm
+# p-value = 0.2369, so the difference in mean blood meHg levels across males and females is NOT significant
 
 ```
 
+Graph the results: 
+
+```{r meHg graph}
+
+# meHg 
+
+
+# upload dataset with the means and 95% CIs (pasted manually into a csv)
+hg_sex_means <- read.csv("hg_sex_means.csv")
+
+# plot
+hg_sex_means %>% 
+  ggplot(aes(x = Sex, 
+             y = geo_mean,
+             fill = Type)) +
+  geom_point(aes(color = Type,
+                 shape = Type),
+                 position = "dodge") +
+  geom_errorbar(aes(color = Type,
+                    ymin = lower, # change for different metalas
+                    ymax = upper),
+                    width = 0.2) +
+  labs(title = "Levels of Blood meHg in Males vs Females", # edit labels for diff graphs
+       x = "Sex",
+       y = "Blood meHg (ug/L)",
+       caption = "NHANES 2015/2016 data") 
+
+#m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
+#m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
+
+```
 
 ### Urinary Hg
-#### Overall Population
 
-```{r urinary Hg overall pop}
+```{r urinary Hg}
+
+### OVERALL 
+
 # Count number of males and females in this dataset
 table(uhg1516_sub$sex)
 100*(svymean(~sex, urine.hg.svy)) # weighted percentage of individuals by sex
@@ -1201,18 +1402,63 @@ table(uhg1516_sub$sex)
 # sexMale   48.82 0.0142
 # sexFemale 51.18 0.0142
 
-```
 
-#### Across Sexes
+# overall population geometric mean and 95% CI
+uhg_log_mean <-
+  svymean(~log(urxuhg_adj), 
+          urine.hg.svy) 
 
-```{r urinary Hg by sex}
+## Geometric mean, meHg
+exp(uhg_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(uhg_log_mean[1] - 1.96 * sqrt(attr(uhg_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(uhg_log_mean[1] + 1.96 * sqrt(attr(uhg_log_mean, "var")))
+
+### BY SEX
+
+# meHg by sex
+svyby(~log(urxuhg_adj),
+      by = ~sex,
+      urine.hg.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(-15.65253) # 0.4281462 ug/L, geometric mean for males
+exp(-15.65253 - (1.96 * 0.03096009)) # lower 95% CI
+exp(-15.65253 + (1.96 * 0.03096009)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(-15.27463) # 0.3990447 ug/L, geometric mean for females
+exp(-15.27463 - (1.96 * 0.03621319)) # lower 95% CI
+exp(-15.27463 + (1.96 * 0.03621319)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_urxuhg_adj <-
+  svyttest(log(urxuhg_adj)~sex,
+           urine.hg.svy)
+
+tt_urxuhg_adj
+# p-value = 5.227e-07, so the difference in urinary Hg levels across males and females is significant
+
 
 ```
 
 ### Urinary Total As and DMA
-#### Overall Population
 
-```{r urinary As overall pop}
+Need to adjust for arsenobetaine. Or just plot arsenobetaine and DMA? See Annie's methods.
+
+#### Total As
+
+```{r urinary total As}
+
+### OVERALL 
+
 # Count number of males and females in this dataset
 table(uas1516_sub$sex)
 100*(svymean(~sex, arsenic.svy)) # weighted percentage of individuals by sex
@@ -1220,104 +1466,57 @@ table(uas1516_sub$sex)
 # sexMale   48.851 0.0143
 # sexFemale 51.149 0.0143
 
-```
 
-#### Across Sexes
+# overall population geometric mean and 95% CI
+total_as_log_mean <-
+  svymean(~log(urxuas), 
+          arsenic.svy) 
 
-```{r urinary As by sex}
+## Geometric mean, meHg
+exp(total_as_log_mean)[1]
 
-```
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(total_as_log_mean[1] - 1.96 * sqrt(attr(total_as_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(total_as_log_mean[1] + 1.96 * sqrt(attr(total_as_log_mean, "var")))
 
+### BY SEX
 
-Find the mean levels of Pb, Cd, Hg (inorganic and organic), and Mn in the US population (accounting for survey weights and design). 
+# meHg by sex
+svyby(~log(urxuas),
+      by = ~sex,
+      arsenic.svy,
+      svymean)
 
+# Males
+# Geometric mean and 95% CI
+exp(-11.98918) # 6.211054e-06 ug/L, geometric mean for males
+exp(-11.98918 - (1.96 * 0.03606566)) # lower 95% CI
+exp(-11.98918 + (1.96 * 0.03606566)) # upper 95% CI
 
-```{r descriptive stats using survey functions, eval=FALSE, include=FALSE}
+# Females
+# Geometric mean and 95% CI
+exp(-11.84353) # 7.184893e-06 ug/L, geometric mean for females
+exp(-11.84353 - (1.96 * 0.04397272)) # lower 95% CI
+exp(-11.84353 + (1.96 * 0.04397272)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
 
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_urxuas <-
+  svyttest(log(urxuas)~sex,
+           arsenic.svy)
 
+tt_urxuas
 
-##############################################################
-## By Sex
-
-## svyby: Survey stats on subsets of data (or, survey stats across levels of factors)
-svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
-      by = ~sex, # groups
-      nhanes.svy, # the ”svydesign” object 
-      svymean)  # the function you want %>% 
-
-# put into a table
-sex_mean_metals_table <-
-  svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
-      by = ~sex, # groups
-      nhanes.svy, # the ”svydesign” object 
-      svymean) %>%  # the function you want %>% 
-  kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"),
-                full_width = F) 
-
- 
-```
-
-```{r descriptive stats for Pb, Cd, Mn, total Hg}
-
-```
-
-```{r descriptive stats for speciated Hg}
-
-```
-
-```{r descriptive stats for urinary Hg}
 
 ```
 
+#### DMA 
 
-The following are the estimated means and SEs of blood levels of lead, cadmium, mercury (total, inorganic, and organic), and manganese in the 2015/2016 US population: 
-
-r (print(mean_metals_table))
-
-Broken down by sex: 
-
-r (print(sex_mean_metals_table))
-
-Note that, as expected, males have higher mean Pb levels. It also appears that females have higher Mn levels. Are these differences significant? Let's conduct t tests.
-
-```{r t tests, eval=FALSE, include=FALSE}
-
-## svyttest: t tests
-
-# Lead (Pb)
-####################################
-
-# To determine if this difference is statistically significant, I do a t-test because I am comparing the mean of a continuous variable across two groups 
-tt_pb <-
-  svyttest(lbxbpb~sex,
-           nhanes.svy)
-
-tt_pb
-
-## What if I want a 90% CI instead of a 95% CI? 
-# confint(tt, level=0.8)
-
-# Manganese (Mn)
-####################################
-
-tt_mn <-
-  svyttest(lbxbmn~sex,
-           nhanes.svy)
-
-tt_mn
-
-# Cadmium (Cd)
-####################################
-tt_cd <-
-  svyttest(lbxbcd~sex,
-           nhanes.svy)
-
-tt_cd
+```{r DMA}
 
 ```
-
-The design-based t-tests indicate that the difference in lead, manganese, and cadmium levels across males and females is significant. 
 
 ## Differences across age groups
 
@@ -1485,36 +1684,7 @@ nh1516_young %>%
 #        y = "Average Blood Mn (ug/L)",
 #        caption = "NHANES 2015/2016 data") 
 #   
-# # Mercury
-# # mercury data manipulation
-# hg_data <- 
-#   life_means_data %>% 
-#   mutate("total" = `Total Hg`,
-#          "inorganic" = `Inorganic Hg`,
-#          "organic" = `Organic Hg`) %>% 
-#   select(-Pb, -Cd, -Mn, -se.lbxbpb, -se.lbxbcd, -se.lbxbmn) %>% 
-#   pivot_longer(inorganic:organic,
-#                names_to = "type",
-#                values_to = "value")
-# 
-# #m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
-# #m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
-# 
-# # plot
-# hg_plot <-
-#   hg_data %>% 
-#   na.omit() %>% 
-#   ggplot(aes(x = Sex,
-#              y = value,
-#              fill = type)) +
-#   geom_col() +
-#   facet_grid(. ~life_stage) +
-#   labs(title = "Levels of Blood Hg in Males vs Females Across Life Stages", # edit labels for diff graphs
-#        y = "Average Blood Hg (ug/L)",
-#        caption = "NHANES 2015/2016 data") + 
-#   scale_fill_discrete(name = "Mercury Type")
 
-## how to add error bars here?????
 
 ```
 
@@ -1666,6 +1836,19 @@ svyquantile(~lbxbpb, # continuous variable
             nhanes.svy, # the ”svydesign” object
             c(0.10, 0.90), # list of percentiles
             ci = F)
+
+## S3 method for class 'survey.design'
+svyquantile(x,
+            design,
+            quantiles,
+            alpha=0.05,
+            ci=FALSE,
+            method = "linear",
+            f = 1,
+            interval.type=c("Wald","score","betaWald"),
+            na.rm=FALSE,
+            se=ci,
+            ties=c("discrete","rounded"), df=Inf,...)
 
 ############################
 
