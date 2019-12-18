@@ -1,7 +1,7 @@
 ---
 title: "nhanes_metals"
 author: "Nicole Comfort"
-date: "12/6/2019"
+date: "12/17/2019"
 output: html_document
 ---
 
@@ -27,12 +27,17 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(NHANES)
 library(survey) # This package handles survey weights/designs easily
+options(survey.lonely.psu = "adjust")
 library(Hmisc) # This is a package (H misc.) for basic desciptive functions.
 library(foreign) # This package allows us to open .XPT files
 library(labelled)
 library(knitr)
 library(kableExtra)
 library(moments)
+library(ggsignif)
+
+# set figure themes 
+theme_set(theme_bw())
 
 ```
 
@@ -201,10 +206,13 @@ nh1516_sub %>%
   count(lbdthglc == 1) # same as for Cd, ~23% < LOD for total Hg
 
 nh1516_sub %>% 
-  count(lbdbmnlc == 1) # 610 NA but otherwise no imputed values for Mn 
-
+  count(lbdbmnlc == 1) # 610 NA but otherwise no imputed values for Mn  
+ 
 ```
 
+The LODs for Pb, Cd, total Hg, and Mn are 0.07 ug/dL, 0.1 ug/L, 0.28 ug/L, and 0.99 ug/L, respectively.
+
+Virtually all participants had values > LOD for Pb and Mn, but 22% of participants had values < LOD for Cd and total Hg.
 
 ### Blood Metals: Missing Data
 
@@ -292,14 +300,15 @@ nh1516_sub %>%
 
 nh1516_sub %>% 
   count(lbdbgmlc == 1) # for methyl Hg, 24% of values are imputed (not including NAs)
-
+ 
 
 ```
 
+The LOD for inorganic, ethyl, and methyl mercury are 0.27 ug/L, 0.16 ug/L, and 0.12 ug/L, respectively. 
+
+Too many participants had imputed values for inorganic Hg (75%) and ethyl Hg (87%) so that these variables are not informative. Thus, we will only examine total Hg and meHg measured in blood.
 
 ## Urinary Mercury: Subset Data Cleaning and Evaluation
-
-*As we can see, there was much higher concentrations of organic Hg than inorganic Hg for Hg measured in blood (double-check)*
 
 The concentration of total Hg in urine is a biomarker of exposure primarily to elemental and inorganic Hg, although some Hg in urine comes from de-methylation of methyl Hg in blood (Abe et al., 1995). Thus, examining total Hg in urine better reflects exposure to inorganic Hg.
 
@@ -393,13 +402,14 @@ Furthermore, out of those eligible, about 4.6% were missing values for urinary m
 
 # The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
 
-# For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]). 
+# For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]).  
 
 uhg1516_sub %>% 
   count(urduhglc == 1) # for urinary Hg, 58% of values are < LOD 
-
+ 
 ```
 
+The LOD for urinary Hg is 0.13 ug/L. 58% of participants had values that were below the LOD. **Thus, urinary Hg in this dataset is not informative and we will not be analyzing it.** 
 
 ## Urinary Arsenic: Subset Data Cleaning and Evaluation
 
@@ -440,13 +450,13 @@ uas1516_sub <-
          URXUCR, URXUAS3, URXUAS5, URXUAB, URXUAC, URXUDMA, URXUMMA, URXUAS) %>%
   janitor::clean_names() %>% 
   mutate(urxucr = urxucr*10000) %>% # convert creatinine from mg/dL to ug/L 
-  mutate(urxuas3 = urxuas3/urxucr, # did I adjust correctly?? 
-         urxuas5 = urxuas5/urxucr,
-         urxuab = urxuab/urxucr,
-         urxuac = urxuac/urxucr,
-         urxudma = urxudma/urxucr,
-         urxumma = urxumma/urxucr,
-         urxuas = urxuas/urxucr) %>% # urine arsenic adjusted for creatinine 
+  #mutate(urxuas3 = urxuas3/urxucr, # did I adjust correctly?? 
+         #urxuas5 = urxuas5/urxucr,
+         #urxuab = urxuab/urxucr,
+         #urxuac = urxuac/urxucr,
+         #urxudma = urxudma/urxucr,
+         #urxumma = urxumma/urxucr,
+         #urxuas = urxuas/urxucr) %>% # urine arsenic adjusted for creatinine 
   rename(sex = riagendr,
          age = ridageyr,
          race = ridreth1) %>% 
@@ -509,6 +519,8 @@ uas1516_sub <-
 
 ```
 
+Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r {nrow(uas1516_sub)}` participants remaining for analysis. 
+
 ```{r speciated arsenic < LOD}
 
 # The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
@@ -527,16 +539,15 @@ uas1516_sub %>%
 uas1516_sub %>% 
   count(urduaclc == 1) # 83% < LOD for arsenocholine 
 
+uas1516_sub %>%  
+  count(urdudalc == 1) # 29% < LOD for dimethylarsinic acid (DMA) 
+ 
 uas1516_sub %>% 
-  count(urdudalc == 1) # 29% < LOD for dimethylarsinic acid (DMA)
-
-uas1516_sub %>% 
-  count(urdummal == 1) # 44% < LOD for monomethylarsonic acid (MMA)
-
+  count(urdummal == 1) # 44% < LOD for monomethylarsonic acid (MMA) 
+  
 ```
 
-
-Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r {nrow(uas1516_sub)}` participants remaining for analysis. 
+The LOD for urinary total arsenic is 0.26 ug/L. Virtually all participants had a measurement of urinary total arsenic above the LOD. However, other than DMA, the percentage of participants with values < LOD were too high and so those species will not be analyzed. 29% of participants have values < LOD for DMA. This is a little on the high end, but we will still evaluate it.
 
 ### Total N's
 
@@ -563,9 +574,9 @@ Continue data cleaning by applying appropriate sample weights, which will allow 
 ## Survey Weights
 
 ```{r survey weighting, echo=FALSE}
-
+ 
 # Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-# Primary Sampling Units (PSU) 
+# Primary Sampling Units (PSU)  
  
 # Here we use "svydesign" to assign the weights. We will use this new survey design variable when running our analyses
 # Blood Pb, Cd, Mn
@@ -600,9 +611,9 @@ summary(urine.hg.svy)
 # urinary arsenic
 ########################################
 arsenic.svy <- svydesign(ids = ~sdmvpsu,
-                        strata = ~sdmvstra, 
+                        strata = ~sdmvstra,  
                         weights = ~wtsa2yr, 
-                        nest = TRUE,
+                        nest = TRUE, 
                         data = uas1516_sub) 
 
 summary(arsenic.svy) 
@@ -619,7 +630,9 @@ summary(arsenic.svy)
 
 ### Data Distribution: Blood Metals
 
-```{r blood metals check distributions}
+After analyzing the data distributions for all variables we will consider, we decided we will log-transform each metal variable to create a more normal distribution. 
+
+```{r blood metals check distributions, eval=FALSE, include=FALSE}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 # "svyhist" creates histograms accounting for survey weights
@@ -680,66 +693,74 @@ svyhist(~log(lbxbmn),
 ## Do I have to test these distributions for normality statistically?? 
 ```
 
-```{r blood metals skewness}
-# but this doesn't take into account the weighting....? or is the weighting only needed for statistical tests but not for assessments of normality? 
-
+```{r blood metals skewness, eval=FALSE, include=FALSE}
+# but this doesn't take into account the weighting....? or is the weighting only needed for statistical tests but not for assessments of normality?  
+ 
 # Pb skewness/kurtosis
 skewness(nh1516_sub$lbxbpb)
 kurtosis(nh1516_sub$lbxbpb)
-# Pb qqplot
-qqnorm(nh1516_sub$lbxbpb)
-qqline(nh1516_sub$lbxbpb)
-
 # log transformed Pb skewness/kurtosis
 skewness(log(nh1516_sub$lbxbpb))
 kurtosis(log(nh1516_sub$lbxbpb))
-# log transformed qqplot, Pb
-qqnorm(log(nh1516_sub$lbxbpb))
-qqline(log(nh1516_sub$lbxbpb))
 
 ###
 
 # Cd skewness/kurtosis
 skewness(nh1516_sub$lbxbcd)
 kurtosis(nh1516_sub$lbxbcd)
-# Cd qqplot
-qqnorm(nh1516_sub$lbxbcd)
-qqline(nh1516_sub$lbxbcd)
-
 # log transformed Cd skewness/kurtosis
 skewness(log(nh1516_sub$lbxbcd))
 kurtosis(log(nh1516_sub$lbxbcd))
-# log transformed qqplot, Cd
-qqnorm(log(nh1516_sub$lbxbcd))
-qqline(log(nh1516_sub$lbxbcd))
 
-# log 10 transformed Cd
+# log 10 transformed Cd 
 skewness(log10(nh1516_sub$lbxbcd))
 kurtosis(log10(nh1516_sub$lbxbcd))
 # log 10 transformed qqplot
 qqnorm(log10(nh1516_sub$lbxbcd))
 qqline(log10(nh1516_sub$lbxbcd))
 # doesn't change the qqplot except for scale
-
+ 
 ###
 
 # Mn skewness/kurtosis
-skewness(nh1516_sub$lbxbmn)
-kurtosis(nh1516_sub$lbxbmn)
-# Mn qqplot
-qqnorm(nh1516_sub$lbxbmn)
-qqline(nh1516_sub$lbxbmn)
-
+skewness(nh1516_sub$lbxbmn) 
+kurtosis(nh1516_sub$lbxbmn) 
 # log transformed Mn skewness/kurtosis
 skewness(log(nh1516_sub$lbxbmn))
-kurtosis(log(nh1516_sub$lbxbmn))
+kurtosis(log(nh1516_sub$lbxbmn)) 
+
+ 
+```
+
+```{r blood metals QQ plots, eval=FALSE, include=FALSE}
+
+# Pb qqplot 
+qqnorm(nh1516_sub$lbxbpb)
+qqline(nh1516_sub$lbxbpb)
+
+# Pb qqplot 
+qqnorm(nh1516_sub$lbxbpb)
+qqline(nh1516_sub$lbxbpb)
+
+# Cd qqplot
+qqnorm(nh1516_sub$lbxbcd) 
+qqline(nh1516_sub$lbxbcd)
+
+# log transformed qqplot, Cd
+qqnorm(log(nh1516_sub$lbxbcd))
+qqline(log(nh1516_sub$lbxbcd))
+
+# Mn qqplot
+qqnorm(nh1516_sub$lbxbmn) 
+qqline(nh1516_sub$lbxbmn)
+
 # log transformed qqplot, Mn
 qqnorm(log(nh1516_sub$lbxbmn))
 qqline(log(nh1516_sub$lbxbmn))
 
 ```
 
-```{r blood metals check impact of influential outliers}
+```{r blood metals check impact of influential outliers, eval=FALSE, include=FALSE}
 
 # plot the survey weight against the variable to determine which extreme values are outliers
 nh1516_sub %>% 
@@ -765,37 +786,13 @@ nh1516_sub %>%
 
 ```
 
-### Data Distribution: Inorganic, Ethyl, Methyl Mercury
+### Data Distribution: Methyl Mercury
 
-```{r speciated blood Hg check distributions}
-
+```{r speciated blood Hg check distributions, eval=FALSE, include=FALSE}
+ 
 # check the distribution and normality of the data and identify outliers for continuous variables
 # "svyhist" creates histograms accounting for survey weights 
  
-## Inorganic Hg
-svyhist(~lbxihg,
-        blood.hg.svy, 
-        main = "Survey weighted average blood inorganic Hg", col = "yellow")
-# right-skewed
-
-# iHg log transformed
-svyhist(~log(lbxihg),
-        blood.hg.svy,
-        main = "Survey weighted log(average blood inorganic Hg)", col = "yellow")
-# still not normal...
-
-## Ethyl Hg
-svyhist(~lbxbge,
-        blood.hg.svy, 
-        main = "Survey weighted average blood ethyl Hg", col = "yellow")
-# right-skewed
-
-# eHg log transformed
-svyhist(~log(lbxbge),
-        blood.hg.svy, 
-        main = "Survey weighted log(average blood ethyl Hg)", col = "yellow")
-# still not normal.... 
-
 ## Methyl Hg
 svyhist(~lbxbgm,
         blood.hg.svy, 
@@ -810,55 +807,23 @@ svyhist(~log(lbxbgm),
 
 ```
 
-```{r speciated blood Hg skewness}
-
-# iHg skewness/kurtosis
-skewness(hg1516_sub$lbxihg)
-kurtosis(hg1516_sub$lbxihg)
-
-# iHg qqplot
-qqnorm(hg1516_sub$lbxihg)
-qqline(hg1516_sub$lbxihg)
-
-# log transformed iHg skewness/kurtosis
-skewness(log(hg1516_sub$lbxihg))
-kurtosis(log(hg1516_sub$lbxihg))
-
-# log transformed iHg qqplot
-qqnorm(log(hg1516_sub$lbxihg))
-qqline(log(hg1516_sub$lbxihg))
-
-####
-
-# ethyl Hg skewness/kurtosis
-skewness(hg1516_sub$lbxbge)
-kurtosis(hg1516_sub$lbxbge)
-
-# ethyl Hg qqplot
-qqnorm(hg1516_sub$lbxbge)
-qqline(hg1516_sub$lbxbge)
-
-# log transformed ethyl Hg skewness/kurtosis
-skewness(log(hg1516_sub$lbxbge))
-kurtosis(log(hg1516_sub$lbxbge))
-
-# log transformed ethyl Hg qqplot
-qqnorm(log(hg1516_sub$lbxbge))
-qqline(log(hg1516_sub$lbxbge))
-
-###
+```{r speciated blood Hg skewness, eval=FALSE, include=FALSE}
 
 # methyl Hg skewness/kurtosis
 skewness(hg1516_sub$lbxbgm)
 kurtosis(hg1516_sub$lbxbgm)
 
-# methyl Hg qqplot
-qqnorm(hg1516_sub$lbxbgm)
-qqline(hg1516_sub$lbxbgm)
-
 # log transformed methyl Hg skewness/kurtosis
 skewness(log(hg1516_sub$lbxbgm))
 kurtosis(log(hg1516_sub$lbxbgm))
+
+```
+
+```{r speciated blood Hg qqplots, eval=FALSE, include=FALSE}
+
+# methyl Hg qqplot
+qqnorm(hg1516_sub$lbxbgm)
+qqline(hg1516_sub$lbxbgm)
 
 # log transformed methyl Hg qqplot
 qqnorm(log(hg1516_sub$lbxbgm))
@@ -866,18 +831,10 @@ qqline(log(hg1516_sub$lbxbgm))
 
 ```
 
-```{r speciated blood Hg check impact of influential outliers}
+```{r speciated blood Hg check impact of influential outliers, eval=FALSE, include=FALSE}
 
 
 # plot the survey weight against the variable to determine which extreme values are outliers
-hg1516_sub %>% 
-  ggplot(aes(x = log(lbxihg), y = wtsh2yr)) +
-  geom_point()
-
-hg1516_sub %>% 
-  ggplot(aes(x = log(lbxbge), y = wtsh2yr)) +
-  geom_point()
-
 hg1516_sub %>% 
   ggplot(aes(x = log(lbxbgm), y = wtsh2yr)) +
   geom_point()
@@ -890,7 +847,9 @@ hg1516_sub %>%
 
 ### Data Distribution: Urinary Mercury
 
-```{r urinary Hg check distributions}
+{we are not analyzing urinary mercury, ignore}
+
+```{r urinary Hg check distributions, eval=FALSE, include=FALSE}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 
@@ -908,29 +867,32 @@ svyhist(~log(urxuhg_adj),
 
 ```
 
-```{r urinary Hg skewness}
+```{r urinary Hg skewness, eval=FALSE, include=FALSE}
 
 # urinary Hg, adjusted for creatinine
 skewness(uhg1516_sub$urxuhg_adj)
 kurtosis(uhg1516_sub$urxuhg_adj)
-
-# Pb qqplot
-qqnorm(uhg1516_sub$urxuhg_adj)
-qqline(uhg1516_sub$urxuhg_adj)
-
 # log(urinary Hg, adjusted for creatinine)
 skewness(log(uhg1516_sub$urxuhg_adj))
 kurtosis(log(uhg1516_sub$urxuhg_adj))
-
-# log transformed qqplot, Pb
-qqnorm(log(uhg1516_sub$urxuhg_adj))
-qqline(log(uhg1516_sub$urxuhg_adj))
 
 # log adjusted looks great! 
 
 ```
 
-```{r urinary Hg describe impact of influential outliers}
+```{r urinary Hg qqplots, eval=FALSE, include=FALSE}
+
+# urinary Hg qqplot
+qqnorm(uhg1516_sub$urxuhg_adj) 
+qqline(uhg1516_sub$urxuhg_adj)
+
+# log transformed qqplot, urinary Hg
+qqnorm(log(uhg1516_sub$urxuhg_adj)) 
+qqline(log(uhg1516_sub$urxuhg_adj))
+
+```
+
+```{r urinary Hg describe impact of influential outliers, eval=FALSE, include=FALSE}
 
 # assess if there are influential / extreme outliers
 
@@ -943,7 +905,7 @@ uhg1516_sub %>%
 
 ### Data Distribution: Urinary Arsenic
 
-```{r urinary As check distributions}
+```{r urinary As check distributions, eval=FALSE, include=FALSE}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 
@@ -951,9 +913,9 @@ uhg1516_sub %>%
 svyhist(~urxuas, # already adjusted for creatinine in this dataset 
         arsenic.svy,
         main = "Survey weighted average urinary As, creatinine-adjusted", col = "blue")
-
+ 
 # log transformed
-svyhist(~log(urxuas),
+svyhist(~log(urxuas), 
         arsenic.svy,
         main = "Survey weighted log(average urinary As, creatinine-adjusted)", col = "blue")
 ## looks much more normal 
@@ -972,45 +934,51 @@ svyhist(~log(urxudma),
 
 ```
 
-```{r urinary As skewness}
+```{r urinary As skewness, eval=FALSE, include=FALSE}
 
 # adjusted arsenic
 skewness(uas1516_sub$urxuas)
 kurtosis(uas1516_sub$urxuas)
 
-qqnorm(uas1516_sub$urxuas)
-qqline(uas1516_sub$urxuas)
-
 # log(adjusted arsenic)
 skewness(log(uas1516_sub$urxuas))
-kurtosis(log(uas1516_sub$urxuas))
-
-qqnorm(log(uas1516_sub$urxuas))
-qqline(log(uas1516_sub$urxuas))
-
+kurtosis(log(uas1516_sub$urxuas)) 
 # log looks much better! still some extremes at the tails though 
 
 ###
-
-# adjusted DMA
+ 
+# adjusted DMA 
 skewness(uas1516_sub$urxudma)
 kurtosis(uas1516_sub$urxudma)
-
-qqnorm(uas1516_sub$urxudma)
-qqline(uas1516_sub$urxudma)
 
 # log(adjusted DMA)
 skewness(log(uas1516_sub$urxudma))
 kurtosis(log(uas1516_sub$urxudma))
 
+# looks much better!  
+ 
+```
+
+```{r urinary As and DMA qqplots, eval=FALSE, include=FALSE}
+
+# total As
+qqnorm(uas1516_sub$urxuas)
+qqline(uas1516_sub$urxuas) 
+# log (adjusted) total As
+qqnorm(log(uas1516_sub$urxuas))
+qqline(log(uas1516_sub$urxuas)) 
+
+# DMA
+qqnorm(uas1516_sub$urxudma)
+qqline(uas1516_sub$urxudma) 
+# log (adjusted) DMA
 qqnorm(log(uas1516_sub$urxudma))
 qqline(log(uas1516_sub$urxudma))
 
-# looks much better! 
 
 ```
 
-```{r urinary As describe impact of influential outliers}
+```{r urinary As describe impact of influential outliers, eval=FALSE, include=FALSE}
 
 # total As 
 uas1516_sub %>% 
@@ -1030,7 +998,7 @@ uas1516_sub %>%
 
 The log-transformed data looks better for Pb, Mn, as well as urinary Hg, total As, and DMA. **Thus, for these variables, we will use the log-transformed average for statistical tests, such as models and using the svyby function.** 
 
-Below are the geometric mean levels (and 95% CIs) of blood Pb, Cd, Mn, and Hg (total and meHg), as well as urinary Hg levels and total As and DMA in the US population (accounting for survey weights and design):
+Below are the geometric mean levels (and 95% CIs) of blood Pb, Cd, Mn, and Hg (total and meHg), as well as urinary total As and DMA in the US population (accounting for survey weights and design):
 
 ### Blood Pb
 
@@ -1067,7 +1035,8 @@ exp(pb_log_mean[1] + 1.96 * sqrt(attr(pb_log_mean, "var")))
 svyby(~log(lbxbpb),
       by = ~sex,
       blood.svy,
-      svymean)
+      svymean, 
+      ci = TRUE)
 
 # Males
 # Geometric mean and 95% CI
@@ -1103,22 +1072,21 @@ pb_sex_means <- read.csv("pb_sex_means.csv")
 pb_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean,
-             fill = Sex)) +
-  geom_point() +
-  geom_errorbar(aes(ymin = lower, # change for different metalas
+             fill = Sex)) + 
+  geom_point(aes(shape = Sex)) +
+  geom_errorbar(aes(ymin = lower, # change for different metals
                     ymax = upper),
                     width = 0.2,
                     position = position_dodge(0.9)) +
-  labs(title="Levels of Blood Pb in Males vs Females", # edit labels for diff graphs
+  geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
+  labs(title = "Geometric Mean Blood Pb in Males vs Females", # edit labels for diff graphs
        x = "Sex",
        y = "Blood Pb (ug/dL)",
        caption = "NHANES 2015/2016 data") 
-
+ 
 ```
 
 ### Blood Cd
-
-Is the log(Cd) distribution normal enough for t-test? 
 
 ```{r blood Cd only}
 
@@ -1127,9 +1095,9 @@ table(nh1516_sub$sex)
 100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
 #           mean     SE
 # sexMale   48.802 0.0104
-# sexFemale 51.198 0.0104
-
-### OVERALL
+# sexFemale 51.198 0 .0104
+ 
+### OVERALL 
 
 # overall population geometric mean and 95% CI
 cd_log_mean <-
@@ -1174,6 +1142,29 @@ tt_lbxbcd <-
 tt_lbxbcd
 # p-value = 1.774e-05, so the difference in mean blood Cd levels across males and females is significant
  
+```
+
+Graph the results: 
+
+```{r plot Cd difference by sex}
+
+cd_sex_means <- read.csv("cd_sex_means.csv")
+
+cd_sex_means %>% 
+  ggplot(aes(x = Sex, 
+             y = geo_mean,
+             fill = Sex)) + 
+  geom_point(aes(shape = Sex)) +
+  geom_errorbar(aes(ymin = lower, # change for different metals
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.9)) +
+  geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
+  labs(title = "Geometric Mean Blood Cd in Males vs Females", # edit labels for diff graphs
+       x = "Sex",
+       y = "Blood Cd (ug/dL)",
+       caption = "NHANES 2015/2016 data") 
+
 ```
 
 ### Blood Mn 
@@ -1234,12 +1225,33 @@ tt_lbxbmn
  
 ```
 
+Graph the results: 
+
+```{r plot Mn difference by sex}
+
+mn_sex_means <- read.csv("mn_sex_means.csv")
+
+mn_sex_means %>% 
+  ggplot(aes(x = Sex, 
+             y = geo_mean,
+             fill = Sex)) + 
+  geom_point(aes(shape = Sex)) +
+  geom_errorbar(aes(ymin = lower, # change for different metals
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.9)) +
+  geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
+  labs(title = "Geometric Mean Blood Mn in Males vs Females", # edit labels for diff graphs
+       x = "Sex",
+       y = "Blood Mn (ug/dL)",
+       caption = "NHANES 2015/2016 data") 
+
+
+```
 
 ### Speciated Blood Hg
 
-Oddly, the levels of inorganic, ethyl, and methyl mercury in the NHANES dataset ` r IHGEM_I.XPT` do not sum to the value of total mercury in the `r PBCD_I.XPT` NHANES dataset. Thus, I am only going to analyze methyl mercury and total mercury. 
-
-**Is the log transformation ok for total Hg and meHg?** 
+The percentage of participants with values < LOD is too high for inorganic blood Hg (75% < LOD) and ethyl blood Hg (87% < LOD). Thus, I will only be analyzing total Hg and MeHg in blood.
 
 #### Total Hg
 
@@ -1361,28 +1373,28 @@ Graph the results:
 
 ```{r meHg graph}
 
-# meHg 
+# meHg  
 
-
-# upload dataset with the means and 95% CIs (pasted manually into a csv)
-hg_sex_means <- read.csv("hg_sex_means.csv")
-
-# plot
+# upload dataset with the means and 95% CIs (pasted manually into a csv) 
+hg_sex_means <- read.csv("hg_sex_means.csv")  
+ 
+# plot 
 hg_sex_means %>% 
   ggplot(aes(x = Sex, 
-             y = geo_mean,
+             y = geo_mean, 
              fill = Type)) +
   geom_point(aes(color = Type,
-                 shape = Type),
+                 shape = Sex), 
                  position = "dodge") +
   geom_errorbar(aes(color = Type,
                     ymin = lower, # change for different metalas
                     ymax = upper),
                     width = 0.2) +
-  labs(title = "Levels of Blood meHg in Males vs Females", # edit labels for diff graphs
+  geom_signif(comparisons = list(c("Female", "Male")), annotations = "NS") +
+  labs(title = "Geometric Mean Blood Hg in Males vs Females", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood meHg (ug/L)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood Hg (ug/L)",
+       caption = "NHANES 2015/2016 data, Total Hg and MeHg") 
 
 #m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
 #m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
@@ -1391,7 +1403,9 @@ hg_sex_means %>%
 
 ### Urinary Hg
 
-```{r urinary Hg}
+**The % of participants < LOD is too high to be meaningful!**
+
+```{r urinary Hg, eval=FALSE, include=FALSE}
 
 ### OVERALL 
 
@@ -1449,75 +1463,6 @@ tt_urxuhg_adj
 
 ```
 
-### Urinary Total As and DMA
-
-Need to adjust for arsenobetaine. Or just plot arsenobetaine and DMA? See Annie's methods.
-
-#### Total As
-
-```{r urinary total As}
-
-### OVERALL 
-
-# Count number of males and females in this dataset
-table(uas1516_sub$sex)
-100*(svymean(~sex, arsenic.svy)) # weighted percentage of individuals by sex
-#            mean     SE
-# sexMale   48.851 0.0143
-# sexFemale 51.149 0.0143
-
-
-# overall population geometric mean and 95% CI
-total_as_log_mean <-
-  svymean(~log(urxuas), 
-          arsenic.svy) 
-
-## Geometric mean, meHg
-exp(total_as_log_mean)[1]
-
-## 95% Confidence Intervals
-# Geometric mean lower 95% confidence interval
-exp(total_as_log_mean[1] - 1.96 * sqrt(attr(total_as_log_mean, "var")))
-# Geometric mean upper 95% confidence interval
-exp(total_as_log_mean[1] + 1.96 * sqrt(attr(total_as_log_mean, "var")))
-
-### BY SEX
-
-# meHg by sex
-svyby(~log(urxuas),
-      by = ~sex,
-      arsenic.svy,
-      svymean)
-
-# Males
-# Geometric mean and 95% CI
-exp(-11.98918) # 6.211054e-06 ug/L, geometric mean for males
-exp(-11.98918 - (1.96 * 0.03606566)) # lower 95% CI
-exp(-11.98918 + (1.96 * 0.03606566)) # upper 95% CI
-
-# Females
-# Geometric mean and 95% CI
-exp(-11.84353) # 7.184893e-06 ug/L, geometric mean for females
-exp(-11.84353 - (1.96 * 0.04397272)) # lower 95% CI
-exp(-11.84353 + (1.96 * 0.04397272)) # upper 95% CI
-# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
-
-# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
-tt_urxuas <-
-  svyttest(log(urxuas)~sex,
-           arsenic.svy)
-
-tt_urxuas
-
-
-```
-
-#### DMA 
-
-```{r DMA}
-
-```
-
 ## Differences across age groups
 
 The exposures and body burdens of these various metals often change over the life course, from childhood through elderly years. Do sex differences exist at certain windows across the life course that are otherwise masked when looking at mean metal levels averaged across all ages? 
@@ -1531,8 +1476,8 @@ We define "child" as age < 12 years,
 "adult" as age 22-65 years, 
 and "elderly" as age > 65 years.
 
-```{r differences across life stages, eval=FALSE, include=FALSE}
-
+```{r differences across life stages}
+ 
 ## create new life stage variable
 nh1516_sub <-
   nh1516_sub %>% 
@@ -1554,69 +1499,234 @@ nhanes.svy <- svydesign(ids = ~sdmvpsu,
                         nest = TRUE,
                         data = nh1516_sub)
 
-## Calculate means across sex and life stages
-svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, # continuous variable
+## Calculate geometric means across sex and life stages
+svyby(~log(lbxbpb)+log(lbxbcd)+log(lbxthg)+log(lbxbmn), # continuous variable
       by = ~sex+life_stage, # groups
       nhanes.svy, # the ”svydesign” object 
       svymean)  # the function you want 
 
-life_means_table <- 
-  svyby(~lbxbpb+lbxbcd+lbxthg+lbxihg+lbxohg+lbxbmn, 
+  svyby(~log(lbxbpb)+log(lbxbcd)+log(lbxthg)+log(lbxbmn), 
       by = ~sex+life_stage, 
       nhanes.svy, 
       svymean) %>%  
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"),
                 full_width = F) 
+# put these means into a table and exponentiate them
+  # the results are saved as the file, life_sex_means.XLSX 
+  
+# Do the same for the hg1516_sub data (for methyl Hg)
+  hg1516_sub <-
+  hg1516_sub %>% 
+  mutate(life_stage =
+           ifelse(age < 12, "Child",
+           ifelse(age %in% 12:21, "Adolescent",
+           ifelse(age %in% 22:65, "Adult",
+                  "Elderly")))) %>% 
+  mutate(life_stage = as.factor(life_stage))
+  
+# relevel the factors to be in chronological order of life stages
+hg1516_sub$life_stage <- fct_relevel(hg1516_sub$life_stage, c("Child", "Adolescent", "Adult", "Elderly"))
 
+# Re-set the survey design
+# NOTE: We always have to re-set the survey design after we create any new variable.
+blood.hg.svy <- svydesign(ids = ~sdmvpsu,
+                        strata = ~sdmvstra,
+                        weights = ~wtsh2yr,
+                        nest = TRUE,
+                        data = hg1516_sub)
+
+## Calculate geometric means across sex and life stages
+svyby(~log(lbxbgm), # continuous variable
+      by = ~sex+life_stage, # groups
+      blood.hg.svy, # the ”svydesign” object 
+      svymean)  # the function you want 
+
+  svyby(~log(lbxbgm), 
+      by = ~sex+life_stage, 
+      nhanes.svy, 
+      svymean) %>%  
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F) 
+# add this to the life means xlsx file
+  
 ```
 
-Across sex and age groups: 
+Graph the results: 
 
-* print life means data table 
-
-Are these differences seen across sex and age group significant? 
-
-```{r}
-# use ANOVA because I am comparing the mean of a continuous variable across two categorical variables (sex and age group)
-## or, why categorize it, but first see if it is significant by sex and age, then categorize age to make graphing easier
-
-```
-
-
-```{r graph these means for sex and age group, Pb, eval=FALSE, include=FALSE}
+```{r plot differences across life stages}
 
 # first, create a new dataset from the life_means_table data
-# (did manually by copying and pasting the data into a csv) - can I do this from the original data?? 
 # import data
 life_means_data <-
-  read_csv("life_means.csv") %>% 
-  mutate(life_stage = as.factor(life_stage))
+  read_csv("life_sex_means.csv") %>% 
+  mutate(life_stage = as.factor(life_stage)) %>% 
+  select(Sex:upper)
 
 life_means_data$life_stage <-
   factor(life_means_data$life_stage, levels = c("Child", "Adolescent", "Adult", "Elderly"))
 
 # Lead
-pb_plot <-
 life_means_data %>% 
-  na.omit() %>% 
+  filter(metal == "lbxbpb") %>% 
   ggplot(aes(x = life_stage, 
-             y = Pb,  # change for different metals
+             y = geo_mean,  # change for different metals
              fill = Sex)) +
-  geom_col(position = "dodge") +
-  geom_errorbar(aes(ymin = Pb - se.lbxbpb, # change for different metalas
-                    ymax = Pb + se.lbxbpb),
+  geom_point(aes(color = Sex,
+                 shape = Sex), 
+                 position = position_dodge(0.4)) +
+  geom_errorbar(aes(color = Sex,
+                    ymin = lower, # change for different metalas
+                    ymax = upper),
                     width = 0.2,
-                    position = position_dodge(0.9)) +
-  labs(title="Levels of Blood Pb in Males vs Females Across Life Stages", # edit labels for diff graphs
+                    position = position_dodge(0.4)) +
+  #geom_signif(comparisons = list(c("Female", "Male"))) +
+  labs(title = "Geometric Mean Blood Pb in Males vs Females Across Life Stages", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Average Blood Pb (ug/dL)",
+       y = "Blood Pb (ug/dL)",
        caption = "NHANES 2015/2016 data") 
 
-# Lead, Ages 1-2
-################################################################
+# Cd
+life_means_data %>% 
+  filter(metal == "lbxbcd") %>% 
+  ggplot(aes(x = life_stage, 
+             y = geo_mean,  # change for different metals
+             fill = Sex)) +
+  geom_point(aes(color = Sex,
+                 shape = Sex), 
+                 position = position_dodge(0.4)) +
+  geom_errorbar(aes(color = Sex,
+                    ymin = lower, # change for different metalas
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.4)) +
+  #geom_signif(comparisons = list(c("Female", "Male"))) +
+  labs(title = "Geometric Mean Blood Cd in Males vs Females Across Life Stages", # edit labels for diff graphs
+       x = "Life Stage",
+       y = "Blood Cd (ug/L)",
+       caption = "NHANES 2015/2016 data") 
 
-## How can I calculate and graph the mean if the stratum has only one PSU at stage 1??
+# Mn
+life_means_data %>% 
+  filter(metal == "lbxbmn") %>% 
+  ggplot(aes(x = life_stage, 
+             y = geo_mean,  # change for different metals
+             fill = Sex)) +
+  geom_point(aes(color = Sex,
+                 shape = Sex), 
+                 position = position_dodge(0.4)) +
+  geom_errorbar(aes(color = Sex,
+                    ymin = lower, # change for different metalas
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.4)) +
+  #geom_signif(comparisons = list(c("Female", "Male"))) +
+  labs(title = "Geometric Mean Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
+       x = "Life Stage",
+       y = "Blood Mn (ug/L)",
+       caption = "NHANES 2015/2016 data") 
+
+# Total Hg
+life_means_data %>% 
+  filter(metal == "lbxthg") %>% 
+  ggplot(aes(x = life_stage, 
+             y = geo_mean,  # change for different metals
+             fill = Sex)) +
+  geom_point(aes(color = Sex,
+                 shape = Sex), 
+                 position = position_dodge(0.4)) +
+  geom_errorbar(aes(color = Sex,
+                    ymin = lower, # change for different metalas
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.4)) +
+  #geom_signif(comparisons = list(c("Female", "Male"))) +
+  labs(title = "Geometric Mean Blood Hg (Total) in Males vs Females Across Life Stages", # edit labels for diff graphs
+       x = "Life Stage",
+       y = "Total Blood Hg (ug/L)",
+       caption = "NHANES 2015/2016 data") 
+
+# MeHg 
+life_means_data %>% 
+  na.omit() %>% 
+  filter(metal == "lbxbgm") %>% 
+  ggplot(aes(x = life_stage, 
+             y = geo_mean,  # change for different metals
+             fill = Sex)) +
+  geom_point(aes(color = Sex,
+                 shape = Sex), 
+                 position = position_dodge(0.4)) +
+  geom_errorbar(aes(color = Sex,
+                    ymin = lower, # change for different metals
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.4)) +
+  labs(title = "Geometric Mean Blood MeHg in Males vs Females Across Life Stages", # edit labels for diff graphs
+       x = "Life Stage",
+       y = "Blood MeHg (ug/L)",
+       caption = "NHANES 2015/2016 data") 
+
+```
+
+Are these differences seen across sex and age group significant? 
+
+```{r}
+
+# use ANOVA because I am comparing the mean of a continuous variable across two categorical variables (sex and age group)
+
+# Pb
+model1 <- svyglm(log(lbxbpb)~life_stage+sex,
+                 design = nhanes.svy)
+
+summary(model1) # gives overall p value
+anova(model1, 
+      type = "II")
+
+residuals(model1) %>% 
+  histogram()
+
+# Cd
+model2 <- svyglm(log(lbxbcd)~life_stage+sex,
+                 design = nhanes.svy)
+
+summary(model2)
+anova(model2)
+  
+# Mn
+model3 <- svyglm(log(lbxbmn)~life_stage+sex,
+                 design = nhanes.svy)
+
+summary(model3)
+anova(model3)
+  
+# Total Hg
+model4 <- svyglm(log(lbxthg)~life_stage+sex,
+                 design = blood.hg.svy)
+
+summary(model4)
+anova(model4)
+
+# MeHg
+model5 <- svyglm(log(lbxbgm)~life_stage+sex,
+                 design = blood.hg.svy)
+  
+summary(model5)
+anova(model5)
+
+
+
+#anova(model1, model2)
+#anova(model1, model2, method="Wald")
+
+```
+
+```{r lead ages 1-2, eval=FALSE, include=FALSE}
+
+# Lead, Ages 1-2
+
+## Q: How can I calculate and graph the mean if the stratum has only one PSU at stage 1??
+# A: Use "lonely adjust" and note that this may not be representative of the true population mean 
 ## lead in ages 1-2
 nh1516_young <-
   nh1516_sub %>% 
@@ -1628,75 +1738,42 @@ nhanes.svy.young <- svydesign(ids = ~sdmvpsu, # cluster IDs
                         nest = TRUE,
                         data = nh1516_young) # call the dataframe 
 
-svyby(~lbxbpb, # continuous variable
+svyby(~log(lbxbpb), # continuous variable
       by = ~sex, # groups
       nhanes.svy.young, # the ”svydesign” object 
-      svymean)  # the function you want %>% 
+      svymean, # the function you want %>% 
+      ci = TRUE)  
+# Note that in the setup chunk, the survey options is set so that survey.lonely.psu = "adjust" 
+# this means that even though this data only comes from one PSU, the code does not give an error
+# we use "adjust" to center the stratum at the population mean rather than the stratum mean
+# the data for the single-PSU stratum are centered at the sample grand mean rather than the stratum mean. This is conservative.
 
 tt_pb_young <-
-  svyttest(lbxbpb~sex,
+  svyttest(log(lbxbpb)~sex,
            nhanes.svy.young)
 
 tt_pb_young
 
-nh1516_young %>% 
-  na.omit() %>% 
-  ggplot(aes(x = age,  
-             y = lbxbpb,  # change for different metals
-             fill = sex))
-## get this to work 
+young_pb_means <- read_csv("young_pb_means.csv")
+
+young_pb_means %>% 
+  ggplot(aes(x = Sex, 
+             y = lbxbpb,
+             fill = Sex)) + 
+  geom_point(aes(shape = Sex)) +
+  geom_errorbar(aes(ymin = lower, # change for different metals
+                    ymax = upper),
+                    width = 0.2,
+                    position = position_dodge(0.9)) +
+  #geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
+  labs(title = "Geometric Mean Blood Pb in Males vs Females", # edit labels for diff graphs
+       x = "Sex",
+       y = "Blood Pb (ug/dL)",
+       caption = "NHANES 2015/2016 data, Ages 1-2 years") 
+
+# p-value = 0.4977 so the difference between males and females at this young age is not apparent, although this was just from one PSU so may not be representative of this segment of the population 
 
 ```
-
-```{r graphs for other metals, evaL=FALSE, include=FALSE}
-
-# # Cadmium
-# cd_plot <-
-# life_means_data %>% 
-#   na.omit() %>% 
-#   ggplot(aes(x = life_stage, 
-#              y = Cd,
-#              fill = Sex)) +
-#   geom_col(position = "dodge") +
-#   geom_errorbar(aes(ymin = Cd - se.lbxbcd,
-#                     ymax = Cd + se.lbxbcd),
-#                 width = 0.2,
-#                 position = position_dodge(0.9)) +
-#   labs(title="Levels of Blood Cd in Males vs Females Across Life Stages",
-#        x = "Life Stage",
-#        y = "Average Blood Cd (ug/L)",
-#        caption = "NHANES 2015/2016 data") 
-# 
-# # Manganese
-# mn_plot <-
-# life_means_data %>% 
-#   na.omit() %>% 
-#   ggplot(aes(x = life_stage, 
-#              y = Mn,  # change for different metals
-#              fill = Sex)) +
-#   geom_col(position = "dodge") +
-#   geom_errorbar(aes(ymin = Mn - se.lbxbmn, # change for different metalas
-#                     ymax = Mn + se.lbxbmn),
-#                 width = 0.2,
-#                 position = position_dodge(0.9)) +
-#   labs(title="Levels of Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
-#        x = "Life Stage",
-#        y = "Average Blood Mn (ug/L)",
-#        caption = "NHANES 2015/2016 data") 
-#   
-
-
-```
-
-
-r (print(pb_plot))
-
-r (print(cd_plot))
-
-r (print(mn_plot))
-
-r (print(hg_plot))
-
 
 
 ```{r urine mercury statistics and graphing, eval=FALSE, include=FALSE}
@@ -1756,13 +1833,6 @@ tt_uhg
 
 ```
 
-Mean and Standard Deviation of Urinary (Elemental/Inorganic) Hg: 
-r (print(urinary_hg_table))
-
-Broken down by sex: 
-r (print(sex_urxhg_table))
-
-Lastly, we will examine urinary arsenic (combining species into organic and inorganic): 
 
 ```{r download arsenic data and clean, eval=FALSE, include=FALSE}
 
@@ -1812,6 +1882,119 @@ svyby(~urxuas, # continuous variable
 # first, some data manipulation
 # combine species into inorganic species and organic species
 
+
+```
+
+### Urinary Total As and DMA
+
+**Need to adjust for arsenobetaine. Or just plot arsenobetaine and DMA? See Annie's methods.**
+
+```{r adjust total As and DMA for arsenobetaine and creatinine}
+
+# AsB is found in seafood and considered to be relatively nontoxic (Choi et al., 2010, Heinrich-Ramm et al., 2002). Therefore, we uses a residual method to provide an estimate of arsenic exposure that minimizes the potential influence of seafood arsenic intake (Jones et al., 2016). This approach yields a calibrated urinary biomarker by regressing DMA by AsB and extracting the model residuals [e.g. ln(DMAi)= β0 + β1 ×ln(arsenobetainei)+ εi]. Additionally, we conducted a sensitivity analysis that used a residual adjusted total urinary arsenic [e.g. ln(Total As)= β0 + β1 ×ln(arsenobetainei)+ εi]. Finally, we used data from 24-h dietary recall to create a variable of recent seafood consumption (yes/no) (Welch et al., 2018). Urinary creatinine was measured by an enzymatic method by a Roche/Hitachi Modular P Chemistry Analyzer. Urinary creatinine was used as a separate independent variable to adjust for differences in urine dilution (Barr et al., 2005).
+
+# Urinary concentrations of iAs, MMA and DMA from exposure to iAs were obtained by regressing the measured concentrations of iAs, MMA, and DMA on arsenobetaine concentrations using a log-log regression model as follows: log(arsenicali)=β0+β1×log(arsenobetainei)+εi,for i in 1,…,N, where arsenical corresponds to iAs, MMA, or DMA, β0 and β1 correspond to the intercept and slope coefficients, and εi represents the residuals in the ith individual of N total individuals.
+
+# for Total Arsenic, adjusted for arsenobetaine and creatinine
+arsenic_model <- svyglm(log(urxuas)~urxucr+log(urxuab), 
+                 arsenic.svy)
+# should I also include independent variables for age, sex, and race/ethnicity? What about BMI?
+
+summary(arsenic_model)
+
+# for DMA, adjusted for arsenobetaine and creatinine
+dma_model <- svyglm(log(urxudma)~urxucr+log(urxuab), 
+                 arsenic.svy)
+# should I also include independent variables for age, sex, and race/ethnicity? What about BMI?
+
+summary(dma_model)
+
+# extract the residuals 
+as_adj <- residuals(arsenic_model)
+dma_adj <- residuals(dma_model)
+# now, add the mean levels of the corresponding arsenic species (iAs or DMA estimated from participants with low arsenobetaine (<1 µg/L)) to the residuals
+
+# calculate mean iAs and DMA among participants with low arsenobetaine
+low_urxuab <-
+  uas1516_sub %>% 
+  filter(urxuab < 1.0)
+
+mean(low_urxuab$urxuas) # add the mean or geometric mean? 
+# 4.663655
+mean(low_urxuab$urxudma)
+# 3.217484
+
+# add these means to the residuals
+uas_total <- as_adj + 4.663655
+uas_dma <- dma_adj + 3.217484
+
+# the calibrated biomarkers for total arsenic and DMA should no longer reflect organic arsenicals from seafood
+
+```
+
+
+#### Total As
+
+```{r urinary total As, eval=FALSE, include=FALSE}
+
+### OVERALL 
+
+# Count number of males and females in this dataset
+table(uas1516_sub$sex)
+100*(svymean(~sex, arsenic.svy)) # weighted percentage of individuals by sex
+#            mean     SE
+# sexMale   48.851 0.0143
+# sexFemale 51.149 0.0143
+
+
+# overall population geometric mean and 95% CI
+total_as_log_mean <-
+  svymean(~log(urxuas), 
+          arsenic.svy) 
+
+## Geometric mean, meHg
+exp(total_as_log_mean)[1]
+
+## 95% Confidence Intervals
+# Geometric mean lower 95% confidence interval
+exp(total_as_log_mean[1] - 1.96 * sqrt(attr(total_as_log_mean, "var")))
+# Geometric mean upper 95% confidence interval
+exp(total_as_log_mean[1] + 1.96 * sqrt(attr(total_as_log_mean, "var")))
+
+### BY SEX
+
+# meHg by sex
+svyby(~log(urxuas),
+      by = ~sex,
+      arsenic.svy,
+      svymean)
+
+# Males
+# Geometric mean and 95% CI
+exp(-11.98918) # 6.211054e-06 ug/L, geometric mean for males
+exp(-11.98918 - (1.96 * 0.03606566)) # lower 95% CI
+exp(-11.98918 + (1.96 * 0.03606566)) # upper 95% CI
+
+# Females
+# Geometric mean and 95% CI
+exp(-11.84353) # 7.184893e-06 ug/L, geometric mean for females
+exp(-11.84353 - (1.96 * 0.04397272)) # lower 95% CI
+exp(-11.84353 + (1.96 * 0.04397272)) # upper 95% CI
+# note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
+
+# To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
+tt_urxuas <-
+  svyttest(log(urxuas)~sex,
+           arsenic.svy)
+
+tt_urxuas
+
+
+```
+
+#### DMA 
+
+```{r DMA}
 
 ```
 
