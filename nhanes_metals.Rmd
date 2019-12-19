@@ -1069,6 +1069,7 @@ Graph the results:
 
 pb_sex_means <- read.csv("pb_sex_means.csv")
 
+pb_plot <-
 pb_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean,
@@ -1079,10 +1080,9 @@ pb_sex_means %>%
                     width = 0.2,
                     position = position_dodge(0.9)) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
-  labs(title = "Geometric Mean Blood Pb in Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Pb Levels, Males vs Females", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Pb (ug/dL)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood Pb (ug/dL)") 
  
 ```
 
@@ -1150,6 +1150,7 @@ Graph the results:
 
 cd_sex_means <- read.csv("cd_sex_means.csv")
 
+cd_plot <- 
 cd_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean,
@@ -1160,10 +1161,9 @@ cd_sex_means %>%
                     width = 0.2,
                     position = position_dodge(0.9)) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
-  labs(title = "Geometric Mean Blood Cd in Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Cd Levels, Males vs Females", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Cd (ug/dL)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood Cd (ug/L)") 
 
 ```
 
@@ -1231,6 +1231,7 @@ Graph the results:
 
 mn_sex_means <- read.csv("mn_sex_means.csv")
 
+mn_plot <-
 mn_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean,
@@ -1241,11 +1242,9 @@ mn_sex_means %>%
                     width = 0.2,
                     position = position_dodge(0.9)) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
-  labs(title = "Geometric Mean Blood Mn in Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Mn Levels, Males vs Females", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Mn (ug/dL)",
-       caption = "NHANES 2015/2016 data") 
-
+       y = "Blood Mn (ug/L)") 
 
 ```
 
@@ -1379,6 +1378,7 @@ Graph the results:
 hg_sex_means <- read.csv("hg_sex_means.csv")  
  
 # plot 
+hg_plot <- 
 hg_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean, 
@@ -1391,13 +1391,14 @@ hg_sex_means %>%
                     ymax = upper),
                     width = 0.2) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "NS") +
-  labs(title = "Geometric Mean Blood Hg in Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Hg Levels, Males vs Females", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Hg (ug/L)",
-       caption = "NHANES 2015/2016 data, Total Hg and MeHg") 
+       y = "Blood Hg (ug/L)") 
 
 #m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
 #m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
+
+(pb_plot + cd_plot) / (mn_plot + hg_plot)
 
 ```
 
@@ -1568,6 +1569,7 @@ life_means_data$life_stage <-
   factor(life_means_data$life_stage, levels = c("Child", "Adolescent", "Adult", "Elderly"))
 
 # Lead
+pb_life_plot <- 
 life_means_data %>% 
   filter(metal == "lbxbpb") %>% 
   ggplot(aes(x = life_stage, 
@@ -1582,12 +1584,12 @@ life_means_data %>%
                     width = 0.2,
                     position = position_dodge(0.4)) +
   #geom_signif(comparisons = list(c("Female", "Male"))) +
-  labs(title = "Geometric Mean Blood Pb in Males vs Females Across Life Stages", # edit labels for diff graphs
+  labs(title = "Pb", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood Pb (ug/dL)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood Pb (ug/dL)") 
 
 # Cd
+cd_life_plot <- 
 life_means_data %>% 
   filter(metal == "lbxbcd") %>% 
   ggplot(aes(x = life_stage, 
@@ -1602,12 +1604,12 @@ life_means_data %>%
                     width = 0.2,
                     position = position_dodge(0.4)) +
   #geom_signif(comparisons = list(c("Female", "Male"))) +
-  labs(title = "Geometric Mean Blood Cd in Males vs Females Across Life Stages", # edit labels for diff graphs
+  labs(title = "Cd", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood Cd (ug/L)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood Cd (ug/L)") 
 
 # Mn
+mn_life_plot <- 
 life_means_data %>% 
   filter(metal == "lbxbmn") %>% 
   ggplot(aes(x = life_stage, 
@@ -1622,12 +1624,12 @@ life_means_data %>%
                     width = 0.2,
                     position = position_dodge(0.4)) +
   #geom_signif(comparisons = list(c("Female", "Male"))) +
-  labs(title = "Geometric Mean Blood Mn in Males vs Females Across Life Stages", # edit labels for diff graphs
+  labs(title = "Mn", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood Mn (ug/L)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood Mn (ug/L)") 
 
 # Total Hg
+hg_life_plot <-
 life_means_data %>% 
   filter(metal == "lbxthg") %>% 
   ggplot(aes(x = life_stage, 
@@ -1642,12 +1644,12 @@ life_means_data %>%
                     width = 0.2,
                     position = position_dodge(0.4)) +
   #geom_signif(comparisons = list(c("Female", "Male"))) +
-  labs(title = "Geometric Mean Blood Hg (Total) in Males vs Females Across Life Stages", # edit labels for diff graphs
+  labs(title = "Hg (Total)", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Total Blood Hg (ug/L)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Total Blood Hg (ug/L)") 
 
 # MeHg 
+mehg_life_plot <-
 life_means_data %>% 
   na.omit() %>% 
   filter(metal == "lbxbgm") %>% 
@@ -1662,16 +1664,17 @@ life_means_data %>%
                     ymax = upper),
                     width = 0.2,
                     position = position_dodge(0.4)) +
-  labs(title = "Geometric Mean Blood MeHg in Males vs Females Across Life Stages", # edit labels for diff graphs
+  labs(title = "MeHg", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood MeHg (ug/L)",
-       caption = "NHANES 2015/2016 data") 
+       y = "Blood MeHg (ug/L)") 
+
+(pb_life_plot + cd_life_plot + mn_life_plot) / (hg_life_plot + mehg_life_plot)
 
 ```
 
 Are these differences seen across sex and age group significant? 
 
-```{r}
+```{r ANOVAs}
 
 # use ANOVA because I am comparing the mean of a continuous variable across two categorical variables (sex and age group)
 
@@ -1721,7 +1724,7 @@ anova(model5)
 
 ```
 
-```{r lead ages 1-2, eval=FALSE, include=FALSE}
+```{r lead ages 1-2}
 
 # Lead, Ages 1-2
 
@@ -1765,7 +1768,7 @@ young_pb_means %>%
                     ymax = upper),
                     width = 0.2,
                     position = position_dodge(0.9)) +
-  #geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
+  geom_signif(comparisons = list(c("Female", "Male")), annotations = "NS") +
   labs(title = "Geometric Mean Blood Pb in Males vs Females", # edit labels for diff graphs
        x = "Sex",
        y = "Blood Pb (ug/dL)",
@@ -1775,6 +1778,8 @@ young_pb_means %>%
 
 ```
 
+
+--Extra Stuff--
 
 ```{r urine mercury statistics and graphing, eval=FALSE, include=FALSE}
 
@@ -1832,7 +1837,6 @@ tt_uhg
 # the difference here is significant but it was done on a non-normal distribution 
 
 ```
-
 
 ```{r download arsenic data and clean, eval=FALSE, include=FALSE}
 
