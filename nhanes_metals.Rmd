@@ -1550,7 +1550,23 @@ svyby(~log(lbxbgm), # continuous variable
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"),
                 full_width = F) 
-# add this to the life means xlsx file
+# add this to the life means xlsx file (done)
+  
+# Ns per group
+nh1516_sub %>% 
+  count(sex == "Female" & life_stage == "Elderly")
+## Males
+# N = 926 Male Child
+# N = 309 Male Adolescent
+# N = 966 Male Adult
+# N = 287 Male Elderly
+## Females
+# N = 887 Female Child
+# N = 307 Female Adolescent
+# N = 1014 Female Adult
+# N = 291 Female Elderly
+
+
   
 ```
 
