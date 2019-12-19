@@ -22,6 +22,9 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("labelled")
 # install.packages("knitr")
 # install.packages("kableExtra")
+# install.packages("ggsignif")
+# install.packages("ggarrange")
+# install.packages("ggpubr")
 
 # load libraries
 library(tidyverse)
@@ -35,9 +38,13 @@ library(knitr)
 library(kableExtra)
 library(moments)
 library(ggsignif)
+# library(ggarrange) Not available for R version 3.5.1
+library(ggpubr)
 
 # set figure themes 
 theme_set(theme_bw())
+theme_update(plot.title = element_text(hjust = 0.5)) # centers plot titles
+theme_update(axis.text.y = element_text(size = 12)) # increase font size of y axis text
 
 ```
 
@@ -301,7 +308,7 @@ nh1516_sub %>%
 nh1516_sub %>% 
   count(lbdbgmlc == 1) # for methyl Hg, 24% of values are imputed (not including NAs)
  
-
+ 
 ```
 
 The LOD for inorganic, ethyl, and methyl mercury are 0.27 ug/L, 0.16 ug/L, and 0.12 ug/L, respectively. 
@@ -1052,22 +1059,22 @@ exp(-0.3077383 + (1.96 * 0.03711817)) # upper 95% CI
 # note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
 
 # To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
-tt_lbxbpb <-
+tt_lbxbpb <- 
   svyttest(log(lbxbpb)~sex,
            blood.svy)
-
+ 
 tt_lbxbpb
-# p-value = 2.58e-05, so the difference in mean blood Pb levels across males and females is significant
+# p-value = 2.58e-05, so the difference in mean blood Pb levels across males and females is significant 
 
 # note that lbxbpb is in the units ug/dL whereas the other blood metals are in ug/L
-
+ 
 ```
 
 Graph the results:
 
 ```{r plot difference in blood Pb by sex}
-
-pb_sex_means <- read.csv("pb_sex_means.csv")
+ 
+pb_sex_means <- read.csv("pb_sex_means.csv") 
 
 pb_plot <-
 pb_sex_means %>% 
@@ -1080,10 +1087,20 @@ pb_sex_means %>%
                     width = 0.2,
                     position = position_dodge(0.9)) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
-  labs(title = "Blood Pb Levels, Males vs Females", # edit labels for diff graphs
-       x = "Sex",
-       y = "Blood Pb (ug/dL)") 
- 
+  ggtitle("Blood Pb Levels") +
+  labs(x = "Sex",
+       y = "Blood Pb (ug/dL)") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "none") + 
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14) +
+  rremove("x.grid")
+#  + ylim(0,1)
+
+  #stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
+  #stat_compare_means(label.y = 50)                  # Add global p-value
+  
 ```
 
 ### Blood Cd
@@ -1151,7 +1168,7 @@ Graph the results:
 cd_sex_means <- read.csv("cd_sex_means.csv")
 
 cd_plot <- 
-cd_sex_means %>% 
+  cd_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean,
              fill = Sex)) + 
@@ -1161,9 +1178,15 @@ cd_sex_means %>%
                     width = 0.2,
                     position = position_dodge(0.9)) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
-  labs(title = "Blood Cd Levels, Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Cd Levels", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Cd (ug/L)") 
+       y = "Blood Cd (ug/L)") +
+  theme(legend.position = "none") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14) +
+  rremove("x.grid")
+#  + ylim(0,1)
 
 ```
 
@@ -1242,9 +1265,15 @@ mn_sex_means %>%
                     width = 0.2,
                     position = position_dodge(0.9)) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "***") +
-  labs(title = "Blood Mn Levels, Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Mn Levels", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Mn (ug/L)") 
+       y = "Blood Mn (ug/L)") +
+  theme(legend.position = "none") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14) +
+  rremove("x.grid")
+# + ylim(0,11)
 
 ```
 
@@ -1391,16 +1420,56 @@ hg_sex_means %>%
                     ymax = upper),
                     width = 0.2) +
   geom_signif(comparisons = list(c("Female", "Male")), annotations = "NS") +
-  labs(title = "Blood Hg Levels, Males vs Females", # edit labels for diff graphs
+  labs(title = "Blood Hg Levels", # edit labels for diff graphs
        x = "Sex",
-       y = "Blood Hg (ug/L)") 
+       y = "Blood Hg (ug/L)") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14) +
+  font("legend.title", size = 14, face = "bold") + 
+  font("legend.text", size = 12) +
+  rremove("x.grid")
+ # + ylim(0,1)
 
-#m_mean = ddply(hg_data, "Sex", summarize, var1 = mean(var1), var2 = mean(var2), var3 = mean(var3))
-#m_devs = ddply(hg_data, "Sex", summarize, var1 = sd(var1), var2 = sd(var2), var3 = sd(var3))
 
-(pb_plot + cd_plot) / (mn_plot + hg_plot)
+pb_plot 
+cd_plot
+mn_plot
+hg_plot 
 
 ```
+
+```{r combine plots to figure 1}
+
+pb_plot <- ggarrange(pb_plot + rremove("x.text"),
+                     labels = c("A"))
+cd_plot <- ggarrange(cd_plot + rremove("x.text"),
+                     labels = c("B"))
+mn_plot <- ggarrange(mn_plot + rremove("x.text"),
+                     labels = c("C"))
+hg_plot <- ggarrange(hg_plot + rremove("x.text"),
+                     labels = c("D"))
+
+figure_1 <- (pb_plot + cd_plot) / (mn_plot + hg_plot)
+
+
+#figure_1 <- ggarrange(pb_plot + rremove("x.text"), 
+#                      cd_plot + rremove("x.text"),
+#                      mn_plot + rremove("x.text"), 
+#                      hg_plot + rremove("x.text"),
+#          labels = c("A", "B", "C", "D"),
+#          ncol = 4, nrow = 1) 
+
+# annotate_figure(figure_1,
+#                bottom = text_grob("Data source: NHANES 2015-2016",
+#                                   face = "italic", size = 12))
+
+figure_1
+# do we like consistent y axis better?? 
+
+
+```
+
 
 ### Urinary Hg
 
@@ -1565,24 +1634,23 @@ nh1516_sub %>%
 # N = 307 Female Adolescent
 # N = 1014 Female Adult
 # N = 291 Female Elderly
-
-
   
 ```
 
 Graph the results: 
 
 ```{r plot differences across life stages}
-
+ 
 # first, create a new dataset from the life_means_table data
-# import data
+# import data 
 life_means_data <-
   read_csv("life_sex_means.csv") %>% 
   mutate(life_stage = as.factor(life_stage)) %>% 
-  select(Sex:upper)
+  select(Sex:upper) 
 
 life_means_data$life_stage <-
   factor(life_means_data$life_stage, levels = c("Child", "Adolescent", "Adult", "Elderly"))
+
 
 # Lead
 pb_life_plot <- 
@@ -1602,7 +1670,11 @@ life_means_data %>%
   #geom_signif(comparisons = list(c("Female", "Male"))) +
   labs(title = "Pb", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood Pb (ug/dL)") 
+       y = "Blood Pb (ug/dL)") +
+  theme(legend.position = "none") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14)
 
 # Cd
 cd_life_plot <- 
@@ -1622,7 +1694,11 @@ life_means_data %>%
   #geom_signif(comparisons = list(c("Female", "Male"))) +
   labs(title = "Cd", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood Cd (ug/L)") 
+       y = "Blood Cd (ug/L)") +
+  theme(legend.position = "none") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14)
 
 # Mn
 mn_life_plot <- 
@@ -1642,7 +1718,11 @@ life_means_data %>%
   #geom_signif(comparisons = list(c("Female", "Male"))) +
   labs(title = "Mn", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood Mn (ug/L)") 
+       y = "Blood Mn (ug/L)") +
+  theme(legend.position = "none") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14)
 
 # Total Hg
 hg_life_plot <-
@@ -1662,7 +1742,11 @@ life_means_data %>%
   #geom_signif(comparisons = list(c("Female", "Male"))) +
   labs(title = "Hg (Total)", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Total Blood Hg (ug/L)") 
+       y = "Total Blood Hg (ug/L)") +
+  theme(legend.position = "none") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14)
 
 # MeHg 
 mehg_life_plot <-
@@ -1676,17 +1760,40 @@ life_means_data %>%
                  shape = Sex), 
                  position = position_dodge(0.4)) +
   geom_errorbar(aes(color = Sex,
-                    ymin = lower, # change for different metals
+                    ymin = lower, # change for different metals 
                     ymax = upper),
                     width = 0.2,
-                    position = position_dodge(0.4)) +
+                    position = position_dodge(0.4)) + 
   labs(title = "MeHg", # edit labels for diff graphs
        x = "Life Stage",
-       y = "Blood MeHg (ug/L)") 
+       y = "Blood MeHg (ug/L)") +
+  theme(legend.position = "right") +
+  font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14) + 
+  font("legend.title", size = 14, face = "bold") + 
+  font("legend.text", size = 12)
 
-(pb_life_plot + cd_life_plot + mn_life_plot) / (hg_life_plot + mehg_life_plot)
+pb_life_plot
+cd_life_plot
+mn_life_plot 
+hg_life_plot
+mehg_life_plot 
 
 ```
+
+```{r assess LODs}
+
+nh1516_sub %>% 
+  filter(sex == "Male" & life_stage == "Elderly") %>% 
+  count(lbdbgmlc == 1)
+
+nh1516_sub %>% 
+  filter(sex == "Female" & life_stage == "Elderly") %>% 
+  count(lbdbgmlc == 1)
+
+```
+
 
 Are these differences seen across sex and age group significant? 
 
@@ -1740,6 +1847,28 @@ anova(model5)
 
 ```
 
+```{r combine plots into figure2}
+
+pb_life_plot <-
+  ggarrange(pb_life_plot, labels = c("A"))
+cd_life_plot <-
+  ggarrange(cd_life_plot, labels = c("B"))
+mn_life_plot <- 
+  ggarrange(mn_life_plot, labels = c("C"))
+hg_life_plot <-
+  ggarrange(hg_life_plot, labels = c("D"))
+mehg_life_plot <- 
+  ggarrange(mehg_life_plot, labels = c("E"))
+
+figure_2 <- (pb_life_plot + cd_life_plot + mn_life_plot) / (hg_life_plot + mehg_life_plot)
+
+figure_2
+# do we like consistent y axis better?? 
+
+
+```
+
+
 ```{r lead ages 1-2}
 
 # Lead, Ages 1-2
@@ -1791,6 +1920,9 @@ young_pb_means %>%
        caption = "NHANES 2015/2016 data, Ages 1-2 years") 
 
 # p-value = 0.4977 so the difference between males and females at this young age is not apparent, although this was just from one PSU so may not be representative of this segment of the population 
+
+nh1516_young %>% 
+  count(sex == "Female")
 
 ```
 
