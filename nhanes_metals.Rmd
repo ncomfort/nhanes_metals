@@ -8,15 +8,15 @@ output: html_document
 First, check whether you have the necessary packages installed and if not, install them.
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
+knitr::opts_chunk$set(echo = TRUE) 
+ 
 ##  install necessary packages
 
 #install.packages("tidyverse")
 #install.packages("NHANES") # example NHANES data to play with 
 #install.packages("survey") # Used to take into account complex survey designs like NHANES
 ## Documentation for this package is: https://cran.r-project.org/web/packages/survey/survey.pdf
-
+ 
 # install.packages("Hmisc")
 # install.packages("foreign")
 # install.packages("labelled")
@@ -27,7 +27,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("ggpubr")
 
 # load libraries
-library(tidyverse)
+library(tidyverse) 
 library(NHANES)
 library(survey) # This package handles survey weights/designs easily
 options(survey.lonely.psu = "adjust")
@@ -38,6 +38,7 @@ library(knitr)
 library(kableExtra)
 library(moments)
 library(ggsignif)
+library(patchwork)
 # library(ggarrange) Not available for R version 3.5.1
 library(ggpubr)
 
@@ -73,6 +74,7 @@ The data files must first be downloaded. They can be found and downloaded at the
 # Demographic files for 2015-2016
 demo1516 <- read.xport("DEMO_I.XPT") %>% 
   arrange(SEQN)
+
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/DEMO_I.htm
 
 # Laboratory blood Pb, Cd, Hg, Mn files for 2015-2016
@@ -86,6 +88,8 @@ hg1516 <- read.xport("IHGEM_I.XPT") %>%
   arrange(SEQN)
 ## Data documentation file: https://wwwn.cdc.gov/Nchs/Nhanes/2015-2016/IHGEM_I.htm
 ### Eligible Sample: All examined participants aged 1-11 years old, and a one-half sample from participants aged 12 years and older were eligible.
+
+######################
 
 # Total Mercury in Urine for 2015-2016
 uhg1516 <- read.xport("UHG_I.XPT") %>% 
@@ -164,6 +168,7 @@ nh1516_sub <-
 
 # later, plot mercury broken down as organic and inorganic, but also try breaking down organic to ethyl and methyl
 # or Annie's recommendation was just to plot total and methyl?  
+
 ```
 
 Blood metals are measured in all participants aged 1-11 years old, and additionally in only a one-half subsample of participants 12 years and older.
@@ -247,6 +252,10 @@ nh1516_sub %>%
   count(is.na(lbxthg)) 
 # 10.88% missing data  
 
+# for methyl Hg
+nh1516_sub %>% 
+  count(is.na(lbxbgm))
+
 # for Mn 
 nh1516_sub %>%
   count(is.na(lbxbmn))
@@ -269,8 +278,8 @@ From our eligible subset, about 11% had missing values for blood metals Pb, Cd, 
 # assess missingness 
 
 # for ethyl Hg
-nh1516_sub %>%
-  count(is.na(lbxbge))
+nh1516_sub %>% 
+  count(is.na(lbxbge)) 
 # 52 participants missing values.
 
 # for methyl Hg
@@ -282,38 +291,40 @@ nh1516_sub %>%
 nh1516_sub %>%
   count(is.na(lbxihg))
 # 50 participants missing values.
-
+ 
 # create separate data subset for speciated mercury including only the complete cases
-hg1516_sub <-  
-  nh1516_sub %>%
-  drop_na(lbxbge) %>%  
+hg1516_sub <-   
+  nh1516_sub %>% 
+ # drop_na(lbxbge) %>%   # remove missing ethyl mercury 
+  drop_na(lbxbgm) %>%    # remove missing methyl mercury 
   select(-lbxbpb, -lbxbcd, -lbxbmn)
-
+ 
 ```
 
-Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for blood mercury. After retaining only complete cases, we are left with `r {nrow(hg1516_sub)}` participants for mercury analysis. 
+Because there were additional participants missing values of mercury (inorganic, ethyl, and methyl), we created a separate dataset, `hg1516`, for speciated blood mercury. After retaining only complete cases, we are left with `r {nrow(hg1516_sub)}` participants for mercury analysis. 
 
-```{r speciated mercury < LOD}
+```{r speciated mercury < LOD, include = FALSE}
 
 # The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
 
 # For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]). 
 
-nh1516_sub %>% 
-  count(lbdihglc == 1) # for iHg, 75% of values are imputed (not including NAs)
+hg1516_sub %>% 
+  count(lbdihglc == 1) # for iHg, 85% of values are imputed 
 
-nh1516_sub %>% 
-  count(lbdbgelc == 1) # for ethyl Hg, 87% of values are imputed (not including NAs) 
+hg1516_sub %>% 
+  count(lbdbgelc == 1) # for ethyl Hg, ~99% values imputed
 
-nh1516_sub %>% 
-  count(lbdbgmlc == 1) # for methyl Hg, 24% of values are imputed (not including NAs)
+hg1516_sub %>% 
+  count(lbdbgmlc == 1) # for methyl Hg, 27% of values imputed (OK)
  
+hg1516_sub %>% 
+  count(lbdthglc == 1) # for total Hg, 25% of values imputed (OK)
  
 ```
 
 The LOD for inorganic, ethyl, and methyl mercury are 0.27 ug/L, 0.16 ug/L, and 0.12 ug/L, respectively. 
-
-Too many participants had imputed values for inorganic Hg (75%) and ethyl Hg (87%) so that these variables are not informative. Thus, we will only examine total Hg and meHg measured in blood.
+Too many participants had imputed values for inorganic Hg (85%) and ethyl Hg (99%) so that these variables are not informative. Thus, we will only examine total Hg and meHg measured in blood.
 
 ## Urinary Mercury: Subset Data Cleaning and Evaluation
 
@@ -323,8 +334,8 @@ NHANES 2015/2016 collected information on Hg in urine. We will analyze this data
 
 ```{r create urinary mercury dataframe, include=FALSE}
 
-# urinary Hg dataframe 
-
+# urinary Hg dataframe  
+ 
 # Merge data to create one dataframe per year; then keep only the necessary variables: 
 uhg1516 <- merge(demo1516, uhg1516, by = "SEQN", all = TRUE)  
 uhg1516 <- merge(uhg1516, creatinine, by = "SEQN", all = TRUE) 
@@ -368,18 +379,18 @@ Let's find how many people are missing the weighting value, indicating that they
 
 ```{r remove NAs and 0 weights for urinary Hg, include=FALSE}
  
-# assess missingness of weights variable to see how many were eligible
-# those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0 
-uhg1516_sub %>% 
+# assess missingness of weights variable to see how many were eligible 
+# those that were eligible, i.e. all participants 3-5 and one-third of participants aged 6 and older will have a wtsa2yr value that is not equal to 0  
+uhg1516_sub %>%  
   count(is.na(wtsa2yr))
 # there are more missing than for blood metals, which makes sense because we sampled only one third of the eligible participants rather than one-half and also are missing data for children < 3 years old
-
+ 
 # drop rows missing the weight variable to arrive at the eligible subset
 uhg1516_sub <-
   uhg1516_sub %>% 
   drop_na(wtsa2yr) %>%  
   filter(wtsa2yr != 0)  
-
+ 
 ```
 
 Of the 9,971 participants surveyed in 2015-2016, `r {nrow(uhg1516_sub)}` were eligible to have urine mercury measured.
@@ -405,22 +416,22 @@ uhg1516_sub <-
 
 Furthermore, out of those eligible, about 4.6% were missing values for urinary mercury. After dropping those with values missing for urinary mercury and/or creatinine (needed for adjustment), we have `r {nrow(uhg1516_sub)}` participants remaining for analysis. 
 
-```{r urinary Hg assess LODs}
+```{r urinary Hg assess LODs, include = FALSE}
 
-# The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
-
+# The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection. 
+ 
 # For analytes with analytic results below the lower limit of detection (ex. LBDBCDLC=1), an imputed fill value was placed in the analyte results field. This value is the lower limit of detection divided by the square root of 2 (LLOD/sqrt[2]).  
 
-uhg1516_sub %>% 
+uhg1516_sub %>%  
   count(urduhglc == 1) # for urinary Hg, 58% of values are < LOD 
- 
+  
 ```
 
 The LOD for urinary Hg is 0.13 ug/L. 58% of participants had values that were below the LOD. **Thus, urinary Hg in this dataset is not informative and we will not be analyzing it.** 
 
 ## Urinary Arsenic: Subset Data Cleaning and Evaluation
 
-```{r create urinary arsenic dataframe}
+```{r create urinary arsenic dataframe, include = FALSE}
 
 # Urinary arsenic dataframe 
 
@@ -528,7 +539,7 @@ uas1516_sub <-
 
 Furthermore, out of those eligible, 5.4% were missing values for total arsenic and DMA. After dropping those with values missing for urinary arsenic and/or creatinine (needed for adjustment), we have `r {nrow(uas1516_sub)}` participants remaining for analysis. 
 
-```{r speciated arsenic < LOD}
+```{r speciated arsenic < LOD, include = FALSE}
 
 # The variable name ending in “LC” (ex., LBDBCDLC) indicates whether the result was below the limit of detection: the value “0” means that the result was at or above the limit of detection, “1” indicates that the result was below the limit of detection.
 
@@ -639,7 +650,7 @@ summary(arsenic.svy)
 
 After analyzing the data distributions for all variables we will consider, we decided we will log-transform each metal variable to create a more normal distribution. 
 
-```{r blood metals check distributions, eval=FALSE, include=FALSE}
+```{r blood metals check distributions, include=FALSE}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
 # "svyhist" creates histograms accounting for survey weights
@@ -700,10 +711,10 @@ svyhist(~log(lbxbmn),
 ## Do I have to test these distributions for normality statistically?? 
 ```
 
-```{r blood metals skewness, eval=FALSE, include=FALSE}
+```{r blood metals skewness, include=FALSE}
 # but this doesn't take into account the weighting....? or is the weighting only needed for statistical tests but not for assessments of normality?  
- 
-# Pb skewness/kurtosis
+  
+# Pb skewness/kurtosis 
 skewness(nh1516_sub$lbxbpb)
 kurtosis(nh1516_sub$lbxbpb)
 # log transformed Pb skewness/kurtosis
@@ -739,15 +750,15 @@ kurtosis(log(nh1516_sub$lbxbmn))
  
 ```
 
-```{r blood metals QQ plots, eval=FALSE, include=FALSE}
+```{r blood metals QQ plots, include=FALSE}
 
-# Pb qqplot 
-qqnorm(nh1516_sub$lbxbpb)
+# Pb qqplot  
+qqnorm(nh1516_sub$lbxbpb) 
 qqline(nh1516_sub$lbxbpb)
 
-# Pb qqplot 
-qqnorm(nh1516_sub$lbxbpb)
-qqline(nh1516_sub$lbxbpb)
+# log transformed qqplot, Pb
+qqnorm(log(nh1516_sub$lbxbpb))
+qqline(log(nh1516_sub$lbxbpb))
 
 # Cd qqplot
 qqnorm(nh1516_sub$lbxbcd) 
@@ -767,7 +778,7 @@ qqline(log(nh1516_sub$lbxbmn))
 
 ```
 
-```{r blood metals check impact of influential outliers, eval=FALSE, include=FALSE}
+```{r blood metals check impact of influential outliers}
 
 # plot the survey weight against the variable to determine which extreme values are outliers
 nh1516_sub %>% 
@@ -795,7 +806,7 @@ nh1516_sub %>%
 
 ### Data Distribution: Methyl Mercury
 
-```{r speciated blood Hg check distributions, eval=FALSE, include=FALSE}
+```{r speciated blood Hg check distributions, include=FALSE}
  
 # check the distribution and normality of the data and identify outliers for continuous variables
 # "svyhist" creates histograms accounting for survey weights 
@@ -912,6 +923,8 @@ uhg1516_sub %>%
 
 ### Data Distribution: Urinary Arsenic
 
+{not going to analyze arsenic, ignore}
+
 ```{r urinary As check distributions, eval=FALSE, include=FALSE}
 
 # check the distribution and normality of the data and identify outliers for continuous variables
@@ -1010,7 +1023,7 @@ Below are the geometric mean levels (and 95% CIs) of blood Pb, Cd, Mn, and Hg (t
 ### Blood Pb
 
 ```{r blood Pb only}
-
+ 
 ### OVERALL 
 
 # Count number of males and females in this dataset
@@ -1065,7 +1078,6 @@ tt_lbxbpb <-
  
 tt_lbxbpb
 # p-value = 2.58e-05, so the difference in mean blood Pb levels across males and females is significant 
-
 # note that lbxbpb is in the units ug/dL whereas the other blood metals are in ug/L
  
 ```
@@ -1074,14 +1086,15 @@ Graph the results:
 
 ```{r plot difference in blood Pb by sex}
  
-pb_sex_means <- read.csv("pb_sex_means.csv") 
-
+pb_sex_means <- read.csv("pb_sex_means.csv")  
+ 
 pb_plot <-
 pb_sex_means %>% 
   ggplot(aes(x = Sex, 
              y = geo_mean,
              fill = Sex)) + 
-  geom_point(aes(shape = Sex)) +
+  geom_point(aes(shape = Sex),
+             size = 3) +
   geom_errorbar(aes(ymin = lower, # change for different metals
                     ymax = upper),
                     width = 0.2,
@@ -1098,6 +1111,8 @@ pb_sex_means %>%
   rremove("x.grid")
 #  + ylim(0,1)
 
+pb_plot
+
   #stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
   #stat_compare_means(label.y = 50)                  # Add global p-value
   
@@ -1109,8 +1124,8 @@ pb_sex_means %>%
 
 # Count number of males and females in this dataset
 table(nh1516_sub$sex)
-100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
-#           mean     SE
+100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex 
+#           mean     SE 
 # sexMale   48.802 0.0104
 # sexFemale 51.198 0 .0104
  
@@ -1158,21 +1173,22 @@ tt_lbxbcd <-
 
 tt_lbxbcd
 # p-value = 1.774e-05, so the difference in mean blood Cd levels across males and females is significant
- 
+  
 ```
 
 Graph the results: 
 
 ```{r plot Cd difference by sex}
 
-cd_sex_means <- read.csv("cd_sex_means.csv")
+cd_sex_means <- read.csv("cd_sex_means.csv") 
 
-cd_plot <- 
-  cd_sex_means %>% 
+cd_plot <-  
+  cd_sex_means %>%  
   ggplot(aes(x = Sex, 
              y = geo_mean,
              fill = Sex)) + 
-  geom_point(aes(shape = Sex)) +
+  geom_point(aes(shape = Sex),
+             size = 3) +
   geom_errorbar(aes(ymin = lower, # change for different metals
                     ymax = upper),
                     width = 0.2,
@@ -1187,6 +1203,8 @@ cd_plot <-
   font("ylab", size = 14) +
   rremove("x.grid")
 #  + ylim(0,1)
+ 
+cd_plot
 
 ```
 
@@ -1259,7 +1277,8 @@ mn_sex_means %>%
   ggplot(aes(x = Sex, 
              y = geo_mean,
              fill = Sex)) + 
-  geom_point(aes(shape = Sex)) +
+  geom_point(aes(shape = Sex),
+             size = 3) +
   geom_errorbar(aes(ymin = lower, # change for different metals
                     ymax = upper),
                     width = 0.2,
@@ -1275,11 +1294,13 @@ mn_sex_means %>%
   rremove("x.grid")
 # + ylim(0,11)
 
+mn_plot
+
 ```
 
 ### Speciated Blood Hg
 
-The percentage of participants with values < LOD is too high for inorganic blood Hg (75% < LOD) and ethyl blood Hg (87% < LOD). Thus, I will only be analyzing total Hg and MeHg in blood.
+The percentage of participants with values < LOD is too high for inorganic blood Hg and ethyl blood Hg. Thus, I will only be analyzing total Hg and MeHg in blood.
 
 #### Total Hg
 
@@ -1288,16 +1309,16 @@ The percentage of participants with values < LOD is too high for inorganic blood
 ### OVERALL 
 
 # Count number of males and females in this dataset
-table(hg1516_sub$sex)
-100*(svymean(~sex, blood.hg.svy)) # weighted percentage of individuals by sex
+table(nh1516_sub$sex)
+100*(svymean(~sex, blood.svy)) # weighted percentage of individuals by sex
 #            mean     SE
-# sexMale   48.748 0.0104
-# sexFemale 51.252 0.0104
+# sexMale   48.802 0.0104
+# sexFemale 51.198 0.0104
 
 # overall population geometric mean and 95% CI
 total_hg_log_mean <-
   svymean(~log(lbxthg), 
-          blood.hg.svy) 
+          blood.svy) 
 
 ## Geometric mean, total blood Hg
 exp(total_hg_log_mean)[1]
@@ -1313,29 +1334,29 @@ exp(total_hg_log_mean[1] + 1.96 * sqrt(attr(total_hg_log_mean, "var")))
 # total Hg by sex
 svyby(~log(lbxthg),
       by = ~sex,
-      blood.hg.svy,
+      blood.svy,
       svymean)
 
 # Males
 # Geometric mean and 95% CI
-exp(-0.3880978) # 0.678346 ug/L, geometric mean for males
-exp(-0.3880978 - (1.96 * 0.04220394)) # lower 95% CI
-exp(-0.3880978 + (1.96 * 0.04220394)) # upper 95% CI
+exp(-0.3867216) # 0.6792802 ug/L, geometric mean for males
+exp(-0.3867216 - (1.96 * 0.04231005)) # lower 95% CI
+exp(-0.3867216 + (1.96 * 0.04231005)) # upper 95% CI
 
 # Females
 # Geometric mean and 95% CI
-exp(-0.3880060) # 0.6784083 ug/L, geometric mean for females
-exp(-0.3880060 - (1.96 * 0.05025774)) # lower 95% CI
-exp(-0.3880060 + (1.96 * 0.05025774)) # upper 95% CI
+exp(-0.3890153) # 0.6777239 ug/L, geometric mean for females
+exp(-0.3890153 - (1.96 * 0.05030650)) # lower 95% CI
+exp(-0.3890153 + (1.96 * 0.05030650)) # upper 95% CI
 # note that the exponentiated form of the mean of a log-transformed variable is the GEOMETRIC MEAN! 
 
 # To determine if this difference is statistically significnat, I do a t-test because I am comparing the mean of a continuous variable across two groups 
 tt_lbxthg <-
   svyttest(log(lbxthg)~sex,
-           blood.hg.svy)
+           blood.svy) 
 
 tt_lbxthg
-# p-value = 0.998, so the difference in mean blood total Hg levels across males and females is NOT significant
+# p-value = 0.998, so the difference in mean blood total Hg levels across males and females is NOT significant 
 
 ```
 
@@ -1343,14 +1364,14 @@ tt_lbxthg
 
 ```{r blood methyl Hg}
 
-### OVERALL 
+### OVERALL  
 
 # Count number of males and females in this dataset
 table(hg1516_sub$sex)
 100*(svymean(~sex, blood.hg.svy)) # weighted percentage of individuals by sex
 #            mean     SE
-# sexMale   48.748 0.0104
-# sexFemale 51.252 0.0104
+# sexMale   48.764 0.0104
+# sexFemale 51.236 0.0104
 
 # overall population geometric mean and 95% CI
 mehg_log_mean <-
@@ -1376,9 +1397,9 @@ svyby(~log(lbxbgm),
 
 # Males
 # Geometric mean and 95% CI
-exp(-0.8482905) # 0.4281462 ug/L, geometric mean for males
-exp(-0.8482905 - (1.96 * 0.05858514)) # lower 95% CI
-exp(-0.8482905 + (1.96 * 0.05858514)) # upper 95% CI
+exp(-0.8460826) # 0.4290926 ug/L, geometric mean for males
+exp(-0.8460826 - (1.96 * 0.05833375)) # lower 95% CI
+exp(-0.8460826 + (1.96 * 0.05833375)) # upper 95% CI
 
 # Females
 # Geometric mean and 95% CI
@@ -1399,12 +1420,10 @@ tt_lbxbgm
 
 Graph the results: 
 
-```{r meHg graph}
+```{r Total Hg and meHg graph}
 
-# meHg  
-
-# upload dataset with the means and 95% CIs (pasted manually into a csv) 
-hg_sex_means <- read.csv("hg_sex_means.csv")  
+# upload dataset with the means and 95% CIs (pasted manually into a csv)  
+hg_sex_means <- read.csv("hg_sex_means.csv")   
  
 # plot 
 hg_plot <- 
@@ -1413,7 +1432,8 @@ hg_sex_means %>%
              y = geo_mean, 
              fill = Type)) +
   geom_point(aes(color = Type,
-                 shape = Sex), 
+                 shape = Sex),
+                 size = 3,
                  position = "dodge") +
   geom_errorbar(aes(color = Type,
                     ymin = lower, # change for different metalas
@@ -1431,17 +1451,48 @@ hg_sex_means %>%
   rremove("x.grid")
  # + ylim(0,1)
 
-
-pb_plot 
-cd_plot
-mn_plot
-hg_plot 
+hg_plot
 
 ```
 
+```{r export plots}
+
+## View Plots 
+pb_plot  
+cd_plot
+mn_plot
+hg_plot
+
+#########################
+
+## Export Plots
+### Pb 
+pdf(file = "./figures/pb-by-sex.pdf")
+  pb_plot
+dev.off()
+
+### Cd 
+pdf(file = "./figures/cd-by-sex.pdf")
+  cd_plot
+dev.off()
+
+### Mn 
+pdf(file = "./figures/mn-by-sex.pdf")
+  mn_plot
+dev.off()
+
+### Hg, Total and MeHg 
+pdf(file = "./figures/hg-by-sex.pdf")
+  hg_plot
+dev.off()
+
+```
+
+Combine plots into one figure: 
+
 ```{r combine plots to figure 1}
 
-pb_plot <- ggarrange(pb_plot + rremove("x.text"),
+pb_plot <- ggarrange(pb_plot + rremove("x.text"), 
                      labels = c("A"))
 cd_plot <- ggarrange(cd_plot + rremove("x.text"),
                      labels = c("B"))
@@ -1453,23 +1504,33 @@ hg_plot <- ggarrange(hg_plot + rremove("x.text"),
 figure_1 <- (pb_plot + cd_plot) / (mn_plot + hg_plot)
 
 
-#figure_1 <- ggarrange(pb_plot + rremove("x.text"), 
-#                      cd_plot + rremove("x.text"),
-#                      mn_plot + rremove("x.text"), 
-#                      hg_plot + rremove("x.text"),
-#          labels = c("A", "B", "C", "D"),
-#          ncol = 4, nrow = 1) 
+figure_1 <- ggarrange(pb_plot + rremove("x.text"), 
+                      cd_plot + rremove("x.text"),
+                      mn_plot + rremove("x.text"), 
+                      hg_plot + rremove("x.text"),
+          labels = c("A", "B", "C", "D"),
+          ncol = 2, nrow = 2) 
 
-# annotate_figure(figure_1,
-#                bottom = text_grob("Data source: NHANES 2015-2016",
-#                                   face = "italic", size = 12))
+annotate_figure(figure_1,
+                bottom = text_grob("Data source: NHANES 2015-2016",
+                                   face = "italic", size = 12))
 
 figure_1
 # do we like consistent y axis better?? 
 
-
 ```
 
+##### Export Figure 1 graph
+
+```{r export fig 1}
+
+pdf(file = "./figures/figure-1-blood levels.pdf")
+  figure_1
+dev.off()
+ 
+# edit as needed 
+
+```
 
 ### Urinary Hg
 
@@ -1548,8 +1609,8 @@ and "elderly" as age > 65 years.
 
 ```{r differences across life stages}
  
-## create new life stage variable
-nh1516_sub <-
+## create new life stage variable 
+nh1516_sub <- 
   nh1516_sub %>% 
   mutate(life_stage =
            ifelse(age < 12, "Child",
@@ -1585,7 +1646,7 @@ svyby(~log(lbxbpb)+log(lbxbcd)+log(lbxthg)+log(lbxbmn), # continuous variable
 # put these means into a table and exponentiate them
   # the results are saved as the file, life_sex_means.XLSX 
   
-# Do the same for the hg1516_sub data (for methyl Hg)
+# Do the same for the hg1516_sub data (for methyl Hg only)
   hg1516_sub <-
   hg1516_sub %>% 
   mutate(life_stage =
@@ -1614,7 +1675,7 @@ svyby(~log(lbxbgm), # continuous variable
 
   svyby(~log(lbxbgm), 
       by = ~sex+life_stage, 
-      nhanes.svy, 
+      blood.hg.svy, 
       svymean) %>%  
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"),
@@ -1663,11 +1724,11 @@ life_means_data %>%
                  shape = Sex), 
                  position = position_dodge(0.4)) +
   geom_errorbar(aes(color = Sex,
-                    ymin = lower, # change for different metalas
+                    ymin = lower, # change for different metals
                     ymax = upper),
                     width = 0.2,
                     position = position_dodge(0.4)) +
-  #geom_signif(comparisons = list(c("Female", "Male"))) +
+#  geom_signif(comparisons = list(c("Female", "Male"))) +
   labs(title = "Pb", # edit labels for diff graphs
        x = "Life Stage",
        y = "Blood Pb (ug/dL)") +
@@ -1774,26 +1835,27 @@ life_means_data %>%
   font("legend.title", size = 14, face = "bold") + 
   font("legend.text", size = 12)
 
-pb_life_plot
-cd_life_plot
-mn_life_plot 
-hg_life_plot
-mehg_life_plot 
-
 ```
+
+Assess # below LOD by age/sex: 
 
 ```{r assess LODs}
 
 nh1516_sub %>% 
-  filter(sex == "Male" & life_stage == "Elderly") %>% 
-  count(lbdbgmlc == 1)
+  filter(sex == "Female" & life_stage == "Elderly") %>% 
+  count(lbdthglc == 1)
 
-nh1516_sub %>% 
+# for Pb: lbdbpblc
+# for Cd: lbdbcdlc
+# for Mn: lbdbmnlc
+# for total Hg: lbdthglc
+
+## for methyl Hg: 
+hg1516_sub %>% 
   filter(sex == "Female" & life_stage == "Elderly") %>% 
   count(lbdbgmlc == 1)
 
 ```
-
 
 Are these differences seen across sex and age group significant? 
 
@@ -1828,7 +1890,7 @@ anova(model3)
   
 # Total Hg
 model4 <- svyglm(log(lbxthg)~life_stage+sex,
-                 design = blood.hg.svy)
+                 design = nhanes.svy)
 
 summary(model4)
 anova(model4)
@@ -1840,12 +1902,49 @@ model5 <- svyglm(log(lbxbgm)~life_stage+sex,
 summary(model5)
 anova(model5)
 
-
-
 #anova(model1, model2)
 #anova(model1, model2, method="Wald")
 
 ```
+
+```{r view and export lifecourse plots}
+
+## View
+pb_life_plot
+cd_life_plot
+mn_life_plot 
+hg_life_plot
+mehg_life_plot 
+
+## Export 
+### Pb 
+pdf(file = "./figures/pb-lifecourse.pdf")
+  pb_life_plot
+dev.off()
+
+### Cd
+pdf(file = "./figures/cd-lifecourse.pdf")
+  cd_life_plot
+dev.off()
+
+### Mn
+pdf(file = "./figures/mn-lifecourse.pdf")
+  mn_life_plot
+dev.off()
+
+### Total Hg 
+pdf(file = "./figures/hg-lifecourse.pdf")
+  hg_life_plot
+dev.off()
+
+### MeHg 
+pdf(file = "./figures/mehg-lifecourse.pdf")
+  mehg_life_plot
+dev.off()
+
+
+```
+
 
 ```{r combine plots into figure2}
 
@@ -1865,6 +1964,15 @@ figure_2 <- (pb_life_plot + cd_life_plot + mn_life_plot) / (hg_life_plot + mehg_
 figure_2
 # do we like consistent y axis better?? 
 
+```
+
+Export figure 2:
+
+```{r}
+
+pdf(file = "./figures/figure-2-age-sex.pdf")
+  figure_2
+dev.off()
 
 ```
 
@@ -1904,6 +2012,7 @@ tt_pb_young
 
 young_pb_means <- read_csv("young_pb_means.csv")
 
+young_pb_plot <- 
 young_pb_means %>% 
   ggplot(aes(x = Sex, 
              y = lbxbpb,
@@ -1913,16 +2022,33 @@ young_pb_means %>%
                     ymax = upper),
                     width = 0.2,
                     position = position_dodge(0.9)) +
-  geom_signif(comparisons = list(c("Female", "Male")), annotations = "NS") +
-  labs(title = "Geometric Mean Blood Pb in Males vs Females", # edit labels for diff graphs
+  geom_signif(comparisons = list(c("Female", "Male")), annotations = "p=0.4977") +
+  labs(title = "Blood Pb in Persons Aged 1-2 Years", # edit labels for diff graphs
        x = "Sex",
        y = "Blood Pb (ug/dL)",
-       caption = "NHANES 2015/2016 data, Ages 1-2 years") 
+       caption = "NHANES 2015/2016 data, Ages 1-2 years") +
+    font("title", size = 16, face = "bold") +
+  font("xlab", size = 14) +
+  font("ylab", size = 14) + 
+  font("legend.title", size = 14, face = "bold") + 
+  font("legend.text", size = 12)
+  
 
 # p-value = 0.4977 so the difference between males and females at this young age is not apparent, although this was just from one PSU so may not be representative of this segment of the population 
 
 nh1516_young %>% 
   count(sex == "Female")
+
+```
+
+```{r export figure 3}
+
+young_pb_plot
+
+####
+pdf(file = "./figures/figure3-young-pb.pdf")
+  young_pb_plot
+dev.off()
 
 ```
 

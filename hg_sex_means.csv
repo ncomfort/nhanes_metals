@@ -1,0 +1,5 @@
+﻿Sex,Type,geo_mean,lower,upper
+Male,Total,0.6792802,0.6252215,0.738013
+Male,Methyl,0.4290926,0.3827333,0.4810671
+Female,Total,0.6777239,0.6140886,0.7479534
+Female,Methyl,0.3990447,0.3430034,0.4642422
