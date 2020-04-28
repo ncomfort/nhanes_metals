@@ -1868,8 +1868,9 @@ model1 <- svyglm(log(lbxbpb)~life_stage+sex,
                  design = nhanes.svy)
 
 summary(model1) # gives overall p value
-anova(model1, 
-      type = "II")
+anova(model1,
+      test = c("F"),
+      method = "LRT")
 
 residuals(model1) %>% 
   histogram()
